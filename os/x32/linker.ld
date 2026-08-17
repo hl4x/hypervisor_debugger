@@ -51,5 +51,27 @@ SECTIONS
 	   a segment with the same name. Simply add stuff here as needed. */
 
     . += 0x4000;
+
     stack_top = ALIGN(4K);
+	kernel32_reserved_start = ALIGN(4K);
+	pml4_base = kernel32_reserved_start;
+	pdpe_base = ALIGN(4K);
+	pde_base = ALIGN(4K);
+	pte_base = ALIGN(4K);
+
+	. += 0x1000;
+
+	.gdt BLOCK(4K) : ALIGN(4K) 
+	{
+		*(.gdt)
+	}
+
+	. += 0x1000;
+
+	.idt BLOCK(4K) : ALIGN(4K)
+	{
+		*(.idt)
+	}
+
+	kernel32_reserved_end = ALIGN(4K);
 }

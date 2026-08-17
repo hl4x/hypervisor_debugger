@@ -1,11 +1,14 @@
+#include <stdint.h>
 #include "printf.h"
-#include "pic.h"
 
 #define PORT 0x3f8 // COM1
 #define CLEAR_SCREEN "\e[1;1H\e[2J"
 
 extern void outb(unsigned short port, unsigned char val);
 extern unsigned char inb(unsigned short port);
+extern void enter_long_mode(void);
+extern uint64_t kernel32_reserverd_start;
+extern uint64_t kernel32_reserverd_end;
 
 // see: https://wiki.osdev.org/Serial_Ports
 static int init_serial(void) 
@@ -34,8 +37,8 @@ static int init_serial(void)
 int main(void)
 {
     init_serial();
-    printf(CLEAR_SCREEN);
-    printf("Hello, World!");
-
+    //printf(CLEAR_SCREEN);
+    //printf("Hello, World!");
+    enter_long_mode();
     return 0;
 }
