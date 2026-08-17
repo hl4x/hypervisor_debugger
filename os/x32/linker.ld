@@ -68,9 +68,10 @@ SECTIONS
 
 	. += 0x1000;
 
-	.idt BLOCK(4K) : ALIGN(4K)
+	.code64 : ALIGN(4K) 
 	{
-		*(.idt)
+		start64_linear = .;
+		*(.code64);
 	}
 
 	kernel32_reserved_end = ALIGN(4K);

@@ -14,10 +14,12 @@ align 4
 	dd MBFLAGS
 	dd CHECKSUM
 
+extern start64_linear
 extern stack_top
 extern pml4_base
 extern main
 
+; Data start
 section .data
 ; Access bits
 PRESENT        equ 1 << 7
@@ -32,6 +34,7 @@ GRAN_4K       equ 1 << 7
 SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
 
+; Text start
 section .text
 global _start
 _start:
@@ -40,7 +43,6 @@ _start:
 	call main 
 loop:
     jmp loop
-
 
 global outb
 outb:
@@ -82,19 +84,19 @@ enter_long_mode:
     bts eax, 31
     mov cr0, eax
 
-    lgdt [GDT64.Pointer]
-    jmp GDT64.Code:Realm64
+    lgdt [GDT64.Pointer] ; load the 64-but global descriptor table
 
-Realm64:
-    cli                           ; Clear the interrupt flag.
-    mov ax, GDT64.Data            ; Set the A-register to the data descriptor.
-    mov ds, ax                    ; Set the data segment to the A-register.
-    mov es, ax                    ; Set the extra segment to the A-register.
-    mov fs, ax                    ; Set the F-segment to the A-register.
-    mov gs, ax                    ; Set the G-segment to the A-register.
-    mov ss, ax                    ; Set the stack segment to the A-register.
-    mov eax, 0x200000             ; load address of x64_kernel into eax
-    jmp eax                       ; jmp to x64_kernel
+    db 0eah ; far jump so CS.L=1
+    dd start64_linear
+    dw 8    ; offset into .Code GDT64 entry
+
+section .code64
+bits 64
+
+global start64
+start64:
+    mov rax, 123
+    hlt
 
 section .gdt
 GDT64: 
