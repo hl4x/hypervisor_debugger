@@ -68,6 +68,13 @@ SECTIONS
 
 	. += 0x1000;
 
+	.idt BLOCK(4K) : ALIGN(4K)
+	{
+		*(.idt)
+	}
+
+	. += 0x1000;
+
 	.code64 : ALIGN(4K) 
 	{
 		start64_linear = .;

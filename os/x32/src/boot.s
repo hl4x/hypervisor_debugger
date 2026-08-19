@@ -93,9 +93,12 @@ enter_long_mode:
 section .code64
 bits 64
 
-global start64
+global start64 
 start64:
-    mov rax, 123
+    mov rsp, stack_top
+    lidt [IDT64.Pointer]
+    mov ax, GDT64.TSS
+    ltr ax
     hlt
 
 section .gdt
@@ -120,3 +123,9 @@ GDT64:
     .Pointer:
         dw $ - GDT64 - 1
         dq GDT64
+
+section .idt 
+IDT64:
+    .Pointer:
+        dw $ - IDT64 - 1
+        dq IDT64
