@@ -52,8 +52,7 @@ SECTIONS
 
     . += 0x4000;
 
-    stack_top = ALIGN(4K);
-	kernel32_reserved_start = ALIGN(4K);
+    stack32_top = ALIGN(4K);
 
 	. += 0x1000;
 
@@ -71,26 +70,20 @@ SECTIONS
 
 	. += 0x1000;
 
-	.pgtable BLOCK (16K) : ALIGN (4K)
+	.pgtable : ALIGN(4K)
 	{
 
-		pml4_base = .;
-		. += 4K;
-		pdpe_base = .;
-		. += 4K;
-		pde_base = .;
-		. += 4K;
-		pte_base = .;
-		. += 4K;
+		pml4_base 	= .;
+		pdpe_base 	= . + 4K;
+		pde_base 	= . + 8K;
+		pte_base 	= . + 12K;
+
+		. += 16K;
 	}
 
-	. += 0x1000;
-
-	kernel32_reserved_end = ALIGN(4K);
-
 	. += 0x8000;
-
-	kernel64_reserved_start = ALIGN(4K);
+	/* Reserve 32 KiB (0x8000); stack64_top marks the high-address end
+	   where RSP is initialized */
 	stack64_top = ALIGN(4K);
 
 	.code64 : ALIGN(4K) 
@@ -98,6 +91,4 @@ SECTIONS
 		start64_linear = .;
 		*(.code64);
 	}
-
-	kernel64_reserved_end = ALIGN(4K);
 }

@@ -29,9 +29,8 @@ static int init_serial(void)
 int main(void)
 {
     init_serial();
-    printf(CLEAR_SCREEN);
-    printf("Hello, World!");
-    setup_pgtable_32();
+    printf(CLEAR_SCREEN, "Entering long mode...");
+    setup_pgtable();
     enter_long_mode();
     return 0;
 }

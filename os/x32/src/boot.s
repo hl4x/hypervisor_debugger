@@ -14,16 +14,15 @@ align 4
 	dd MBFLAGS
 	dd CHECKSUM
 
-extern kernel32_reserved_start
-extern kernel64_reserved_start
 extern start64_linear
+extern stack32_top
 extern stack64_top
-extern stack_top
 extern pml4_base
 extern pdpe_base
 extern pde_base
 extern pte_base
 extern main
+;extern kernel_main
 
 ; Data start
 section .data
@@ -42,15 +41,19 @@ LONG_MODE     equ 1 << 5
 
 BOOT_INIT_PGT_SIZE equ 4 * 4096
 
+KERNEL_LOAD_ADDRESS equ 0x00100000
+
 ; Text start
 section .text
 global _start
 _start:
-	mov esp, stack_top
+	mov esp, stack32_top
     push ebx
 	call main 
-loop:
-    jmp loop
+.hang:
+    cli
+    hlt 
+    jmp .hang
 
 global outb
 outb:
@@ -65,33 +68,46 @@ inb:
     in al, dx 
     ret
 
-global setup_pgtable_32
-setup_pgtable_32:
+global setup_pgtable
+setup_pgtable:
+    ;
+    ; Identity map the first 2 MiB of physicial memory
+    ;
+    xor edi, edi
     ; essentially memset(pgtable, 0, BOOT_INIT_PGT_SIZE)
     mov edi, pml4_base
     xor eax, eax
-    mov ecx, BOOT_INIT_PGT_SIZE/4
+    mov ecx, BOOT_INIT_PGT_SIZE / 4
     rep stosd
 
     ; construct pml4 
+    ; PML4[0] -> PDPE
     mov edi, pml4_base
-    lea eax, [pdpe_base + 0x1003] ; 0x1000 | 0x0003 for present and w/r bits
+    mov eax, pdpe_base + 3 ; 3 (0b11) for Present and W/R page-translation bits
     mov dword [edi], eax
 
     ; construct pdpe
+    ; PDPE[0] -> PDE
     mov edi, pdpe_base
-    lea eax, [pde_base + 0x1003]
+    mov eax, pde_base + 3
     mov dword [edi], eax
 
     ; construct pde
+    ; PDE[0] -> PTE
     mov edi, pde_base
-    lea eax, [pte_base + 0x1003]
+    mov eax, pte_base + 3
     mov dword [edi], eax
 
-    ; construct pte
+    ; construct and populate PTEs
+    ; kernel starts at 0x00100000 (1 MiB) from the linker script
     mov edi, pte_base
-    lea eax, [kernel32_reserved_start + 0x1003]
+    mov eax, 3 ; Present and W/R bits
+    mov ecx, 512
+.map:
     mov dword [edi], eax
+    add edi, 8
+    add eax, 0x1000
+    loop .map
 
 global enter_long_mode
 enter_long_mode:
@@ -132,11 +148,16 @@ bits 64
 global start64 
 start64:
     mov rsp, stack64_top
-    lidt [IDT64.Pointer]
-    mov ax, GDT64.TSS
-    ltr ax
-    mov rcx, 0xfaded
+    mov rax, 0xdeadbeefcafebabe
+    ;lidt [IDT64.Pointer]
+    ;mov ax, GDT64.TSS
+    ;ltr ax
+
+    ;call kernel_main
+.hang:
+    cli
     hlt
+    jmp .hang
 
 section .gdt
 GDT64: 
@@ -166,5 +187,3 @@ IDT64:
     .Pointer:
         dw $ - IDT64 - 1
         dq IDT64
-
-section .pgtable

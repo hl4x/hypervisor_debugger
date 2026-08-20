@@ -7,7 +7,7 @@
 extern void outb(unsigned short port, unsigned char val);
 extern unsigned char inb(unsigned short port);
 extern void enter_long_mode(void);
-extern void setup_pgtable_32(void);
+extern void setup_pgtable(void);
 
 extern uint64_t kernel32_reserverd_start;
 extern uint64_t kernel32_reserverd_end;
