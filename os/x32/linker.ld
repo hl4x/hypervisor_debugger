@@ -75,10 +75,13 @@ SECTIONS
 	{
 
 		pml4_base = .;
-		*(.pgtable);
-		pdpe_base = ALIGN(4K);
-		pde_base = ALIGN(4K);
-		pte_base = ALIGN(4K);
+		. += 4K;
+		pdpe_base = .;
+		. += 4K;
+		pde_base = .;
+		. += 4K;
+		pte_base = .;
+		. += 4K;
 	}
 
 	. += 0x1000;
