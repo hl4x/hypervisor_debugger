@@ -9,6 +9,6 @@ void* init_page_tables(void);
 #define PG_WRITE    (1 << 1)    // 0b10
 #define PG_TABLE_ENTRY (ptr) (((uint64_t_)ptr) | PG_PRESENT | PG_WRITE )
 
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 4096 // 0x1000
 
 #endif // __PAGING_H

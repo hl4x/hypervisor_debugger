@@ -14,9 +14,15 @@ align 4
 	dd MBFLAGS
 	dd CHECKSUM
 
+extern kernel32_reserved_start
+extern kernel64_reserved_start
 extern start64_linear
+extern stack64_top
 extern stack_top
 extern pml4_base
+extern pdpe_base
+extern pde_base
+extern pte_base
 extern main
 
 ; Data start
@@ -33,6 +39,8 @@ ACCESSED       equ 1 << 0
 GRAN_4K       equ 1 << 7
 SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
+
+BOOT_INIT_PGT_SIZE equ 4 * 4096
 
 ; Text start
 section .text
@@ -56,6 +64,34 @@ inb:
     mov dx, [esp+4]
     in al, dx 
     ret
+
+global setup_pgtable_32
+setup_pgtable_32:
+    ; essentially memset(pgtable, 0, BOOT_INIT_PGT_SIZE)
+    mov edi, pml4_base
+    xor eax, eax
+    mov ecx, BOOT_INIT_PGT_SIZE/4
+    rep stosd
+
+    ; construct pml4 
+    mov edi, pml4_base
+    lea eax, [pdpe_base + 0x1003] ; 0x1000 | 0x0003 for present and w/r bits
+    mov dword [edi], eax
+
+    ; construct pdpe
+    mov edi, pdpe_base
+    lea eax, [pde_base + 0x1003]
+    mov dword [edi], eax
+
+    ; construct pde
+    mov edi, pde_base
+    lea eax, [pte_base + 0x1003]
+    mov dword [edi], eax
+
+    ; construct pte
+    mov edi, pte_base
+    lea eax, [kernel32_reserved_start + 0x1003]
+    mov dword [edi], eax
 
 global enter_long_mode
 enter_long_mode:
@@ -95,10 +131,11 @@ bits 64
 
 global start64 
 start64:
-    mov rsp, stack_top
+    mov rsp, stack64_top
     lidt [IDT64.Pointer]
     mov ax, GDT64.TSS
     ltr ax
+    mov rcx, 0xfaded
     hlt
 
 section .gdt
@@ -129,3 +166,5 @@ IDT64:
     .Pointer:
         dw $ - IDT64 - 1
         dq IDT64
+
+section .pgtable

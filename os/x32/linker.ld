@@ -54,10 +54,6 @@ SECTIONS
 
     stack_top = ALIGN(4K);
 	kernel32_reserved_start = ALIGN(4K);
-	pml4_base = kernel32_reserved_start;
-	pdpe_base = ALIGN(4K);
-	pde_base = ALIGN(4K);
-	pte_base = ALIGN(4K);
 
 	. += 0x1000;
 
@@ -75,11 +71,30 @@ SECTIONS
 
 	. += 0x1000;
 
+	.pgtable BLOCK (16K) : ALIGN (4K)
+	{
+
+		pml4_base = .;
+		*(.pgtable);
+		pdpe_base = ALIGN(4K);
+		pde_base = ALIGN(4K);
+		pte_base = ALIGN(4K);
+	}
+
+	. += 0x1000;
+
+	kernel32_reserved_end = ALIGN(4K);
+
+	. += 0x8000;
+
+	kernel64_reserved_start = ALIGN(4K);
+	stack64_top = ALIGN(4K);
+
 	.code64 : ALIGN(4K) 
 	{
 		start64_linear = .;
 		*(.code64);
 	}
 
-	kernel32_reserved_end = ALIGN(4K);
+	kernel64_reserved_end = ALIGN(4K);
 }
