@@ -26,7 +26,7 @@ X64_OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(X64_SRCS))
 OBJS := \
 	$(OUTPUT)/x32/boot.o \
 	$(X32_OBJS) \
-
+	$(X64_OBJS)
 .PHONY: all
 all: kernel
 

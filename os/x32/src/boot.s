@@ -22,7 +22,7 @@ extern pdpe_base
 extern pde_base
 extern pte_base
 extern main
-;extern kernel_main
+extern kernel_main
 
 ; Data start
 section .data
@@ -148,12 +148,7 @@ bits 64
 global start64 
 start64:
     mov rsp, stack64_top
-    mov rax, 0xdeadbeefcafebabe
-    ;lidt [IDT64.Pointer]
-    ;mov ax, GDT64.TSS
-    ;ltr ax
-
-    ;call kernel_main
+    call kernel_main
 .hang:
     cli
     hlt
