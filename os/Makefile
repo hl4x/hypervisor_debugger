@@ -1,8 +1,22 @@
 OUTPUT := $(abspath .output)
+KERNEL := $(OUTPUT)/kernel
+ISO_DIR := $(OUTPUT)/isodir
+ISO := $(OUTPUT)/hypervisor_debugger.iso
 
 TOOLCHAIN := $(abspath ../toolchain)
-CC32 := $(abspath $(TOOLCHAIN)/i686/bin/i686-elf-gcc)
-CC64 := $(abspath $(TOOLCHAIN)/x86_64/bin/x86_64-elf-gcc)
+CC := $(abspath $(TOOLCHAIN)/x86_64/bin/x86_64-elf-gcc)
+
+MAKEFLAGS += --no-print-directory
+CPPFLAGS := -Ix64/include
+CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie
+LDFLAGS := -nostdlib -T linker.ld
+LDLIBS := -lgcc
+
+SRCS := $(shell find x64/src -name '*.c')
+OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(SRCS))
+OBJS := \
+	$(OUTPUT)/x64/src/boot/boot.o \
+	$(OBJS)
 
 Q := @
 msg := @printf '  %-8s %s%s\n'					\
@@ -10,46 +24,59 @@ msg := @printf '  %-8s %s%s\n'					\
 	      "$(patsubst $(abspath $(OUTPUT))/%,%,$(2))"	\
 	      "$(if $(3), $(3))";
 
-MAKEFLAGS += --no-print-directory
-CPPFLAGS32 := -Ix32/include
-CPPFLAGS64 := -Ix64/include
-CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie
-LDFLAGS := -nostdlib -T linker.ld
-LDLIBS := -lgcc
-
-X32_SRCS := $(wildcard x32/src/*.c)
-X32_OBJS := $(patsubst x32/src/%.c,$(OUTPUT)/x32/%.o,$(X32_SRCS))
-
-X64_SRCS := $(wildcard x64/src/*.c)
-X64_OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(X64_SRCS))
-
-OBJS := \
-	$(OUTPUT)/x32/boot.o \
-	$(X32_OBJS) \
-	$(X64_OBJS)
 .PHONY: all
-all: kernel
+all: $(ISO) 
 
-kernel: $(OBJS)
+$(KERNEL): $(OBJS)
 	$(call msg,LD,$@)
-	$(Q)$(CC32) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-$(OUTPUT)/x32/boot.o: x32/src/boot.s | $(OUTPUT)/x32
+$(ISO): $(KERNEL)
+	$(call msg,ISO,$@)
+	$(Q)mkdir -p $(ISO_DIR)/boot/grub
+	$(Q)cp $(KERNEL) $(ISO_DIR)/boot/kernel
+	$(Q)echo 'set timeout=0; set default=0; menuentry "hypervisor_debugger" { multiboot /boot/kernel }' > $(ISO_DIR)/boot/grub/grub.cfg
+	$(Q)grub-mkrescue -o $(ISO) $(ISO_DIR)
+
+$(OUTPUT)/x64/src/boot/boot.o: x64/src/boot/boot.s 
+	@mkdir -p $(dir $@)
 	$(call msg,ASM,$@)
-	$(Q)nasm -felf32 -o $@ $<
+	$(Q)nasm -felf64 -o $@ $<
 
-$(OUTPUT)/x32/%.o: x32/src/%.c | $(OUTPUT)/x32
-	$(call msg,CC32,$@)
-	$(Q)$(CC32) $(CPPFLAGS32) $(CFLAGS) -c $< -o $@
-
-$(OUTPUT)/x64/%.o: x64/src/%.c | $(OUTPUT)/x64
+$(OUTPUT)/x64/%.o: x64/src/%.c
+	@mkdir -p $(dir $@)
 	$(call msg,CC64, $@)
-	$(Q)$(CC64) $(CPPFLAGS64) $(CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
-$(OUTPUT)/x32 $(OUTPUT)/x64:
-	$(Q)mkdir -p $@
+DEPS := $(OBJS:.o=.d)
+-include $(DEPS)
 
 .PHONY: clean
 clean:
 	$(call msg,CLEAN)
 	$(Q)rm -rf $(OUTPUT)
+
+.PHONY: run
+run: $(ISO)
+	$(call msg,QEMU,Starting VM...)
+	$(Q)qemu-system-x86_64 \
+		-smp 2 \
+		-cpu host \
+		-m 4G \
+		-cdrom $(ISO) \
+		-enable-kvm \
+		-nographic \
+		-monitor telnet:127.0.0.1:1235,server,nowait
+
+.PHONY: debug 
+debug: $(ISO)
+	$(call msg,QEMU,Starting VM...)
+	$(Q)qemu-system-x86_64 \
+		-smp 2 \
+		-cpu host \
+		-m 4G \
+		-cdrom $(ISO) \
+		-enable-kvm \
+		-nographic \
+		-monitor telnet:127.0.0.1:1235,server,nowait \
+		-s -S

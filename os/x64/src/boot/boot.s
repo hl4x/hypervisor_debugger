@@ -14,14 +14,6 @@ align 4
 	dd MBFLAGS
 	dd CHECKSUM
 
-extern start64_linear
-extern stack32_top
-extern stack64_top
-extern pml4_base
-extern pdpe_base
-extern pde_base
-extern pte_base
-extern main
 extern kernel_main
 
 ; Data start
@@ -43,29 +35,86 @@ BOOT_INIT_PGT_SIZE equ 4 * 4096
 
 KERNEL_LOAD_ADDRESS equ 0x00100000
 
+PORT equ 0x3f8
+
+IDT64:
+    .Pointer:
+        dw $ - IDT64 - 1
+        dq IDT64
+
 ; Text start
 section .text
-global _start
+bits 64
+global _start 
 _start:
+    mov rsp, stack64_top
+    call kernel_main
+.hang:
+    cli
+    hlt
+    jmp .hang
+
+
+section .boot.text
+bits 32
+
+global start32
+start32:
 	mov esp, stack32_top
-    push ebx
-	call main 
+    call init_serial
+    call setup_pgtable
+    call enter_long_mode
 .hang:
     cli
     hlt 
     jmp .hang
 
-global outb
-outb:
-    mov dx, [esp+4]
-    mov al, [esp+8]
-    out dx, al
-    ret
+global init_serial
+init_serial:
+    ;
+    ; see: https://wiki.osdev.org/Serial_Ports
+    ;
+    mov dx, PORT + 1 ; DX = destination port
+    xor al, al       ; AL = value
+    out dx, al 
 
-global inb
-inb:
-    mov dx, [esp+4]
-    in al, dx 
+    mov dx, PORT + 3
+    mov al, 0x80
+    out dx, al
+
+    mov dx, PORT + 0
+    mov al, 0x03
+    out dx, al
+
+    mov dx, PORT + 1
+    xor al, al
+    out dx, al
+
+    mov dx, PORT + 3
+    mov al, 0x03
+    out dx, al
+
+    mov dx, PORT + 2
+    mov al, 0xC7
+    out dx, al
+
+    mov dx, PORT + 4
+    mov al, 0x0B
+    out dx, al
+
+    mov dx, PORT + 4
+    mov al, 0x1E
+    out dx, al
+
+    mov dx, PORT + 0
+    mov al, 0xAE
+    out dx, al
+
+    ; set serial in normal operation mode
+    mov dx, PORT + 4
+    mov al, 0x0F
+    out dx, al
+
     ret
 
 global setup_pgtable
@@ -109,6 +158,8 @@ setup_pgtable:
     add eax, 0x1000
     loop .map
 
+    ret
+
 global enter_long_mode
 enter_long_mode:
     ; disable paging (CR0.PG=0)
@@ -139,22 +190,10 @@ enter_long_mode:
     lgdt [GDT64.Pointer] ; load the 64-but global descriptor table
 
     db 0eah ; far jump so CS.L=1
-    dd start64_linear
+    dd _start 
     dw 8    ; offset into .Code GDT64 entry
 
-section .code64
-bits 64
-
-global start64 
-start64:
-    mov rsp, stack64_top
-    call kernel_main
-.hang:
-    cli
-    hlt
-    jmp .hang
-
-section .gdt
+section .rodata
 GDT64: 
     .Null: equ $ - GDT64
         dq 0
@@ -175,10 +214,24 @@ GDT64:
         dd 0x00CF8900
     .Pointer:
         dw $ - GDT64 - 1
-        dq GDT64
+        dd GDT64
 
-section .idt 
-IDT64:
-    .Pointer:
-        dw $ - IDT64 - 1
-        dq IDT64
+
+section .bss
+align 4096
+
+; Reserve 4 KiB for each page table
+pml4_base: resb 4096
+pdpe_base: resb 4096
+pde_base:  resb 4096
+pte_base:  resb 4096
+
+; Reserve 16 KiB for the 32-bit stack
+stack32_bottom: resb 16384
+stack32_top:
+
+; Reserve 16 KiB for the 64-bit stack
+stack64_bottom: resb 16384
+stack64_top:
+
+
