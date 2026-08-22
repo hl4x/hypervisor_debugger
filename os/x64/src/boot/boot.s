@@ -35,7 +35,7 @@ BOOT_INIT_PGT_SIZE equ 4 * 4096
 
 KERNEL_LOAD_ADDRESS equ 0x00100000
 
-PORT equ 0x3f8
+PORT equ 0x3f8 ; COM1
 
 IDT64:
     .Pointer:
@@ -54,6 +54,19 @@ _start:
     hlt
     jmp .hang
 
+; inb and outb for printf
+global outb
+outb:
+    mov dx, di ; PORT
+    mov al, sil ; VAL
+    out dx, al
+    ret
+
+global inb
+inb:
+    mov dx, di ; PORT
+    in al, dx
+    ret
 
 section .boot.text
 bits 32
