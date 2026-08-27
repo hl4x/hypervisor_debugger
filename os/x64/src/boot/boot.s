@@ -200,7 +200,9 @@ enter_long_mode:
     bts eax, 31
     mov cr0, eax
 
-    lgdt [GDT64.Pointer] ; load the 64-but global descriptor table
+    ltr [GDT64.TSS] 
+
+    lgdt [GDT64.Pointer] ; load the 64-bit global descriptor table
 
     db 0eah ; far jump so CS.L=1
     dd _start 

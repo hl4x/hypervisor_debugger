@@ -1,4 +1,5 @@
-section .text
+#include "irq/idt_vectors.h"
+
 %macro PUSH_ALL 0
     push rax ; high memory
     push rbx  
@@ -35,7 +36,62 @@ section .text
     pop rax ; high memory
 %endmacro
 
-extern isr_handler;
+%macro ISR_NOERRCODE 1
+    push 0              ; no err_code
+    push %1             ; push intr_vector_nr
+    jmp isr_common_stub ; jmp so no return address is pushed to the stack
+%endmacro
+
+%macro ISR_ERRCODE 1
+    push %1 ; push intr_vector_nr
+    jmp isr_common_stub
+%endmacro
+
+%assign ISR_ERRCODE_MASK \
+    (1 << IDT_DOUBLE_FAULT                  ) | \
+    (1 << IDT_INVALID_TSS                   ) | \
+    (1 << IDT_SEGMENT_NOT_PRESENT           ) | \
+    (1 << IDT_STACK_SEGMENT_FAULT           ) | \
+    (1 << IDT_GENERAL_PROTECTION_FAULT      ) | \
+    (1 << IDT_PAGE_FAULT                    ) | \
+    (1 << IDT_ALIGNMENT_CHECK               ) | \
+    (1 << IDT_CONTROL_PROTECTION_EXCEPTION  ) | \
+    (1 << IDT_VMM_COMMUNICATION             ) | \
+    (1 << IDT_SECURITY_EXCEPTION            )
+
+
+section .text
+
+extern isr_handler
 isr_common_stub:
     PUSH_ALL
-    ; TODO COMPLETE
+    mov rdi, rsp
+    mov rbp, rsp    ; save stack
+    and rsp, ~0xf
+    call isr_handler
+    mov rsp, rbp    ; restore stack
+    POP_ALL
+    add rsp, 0x10   ; skip past err_code and intr_vector_nr 
+    iretq
+
+%assign i 0
+%rep 256
+isr_stub_%[i]:
+    %if (ISR_ERRCODE_MASK >> i) & 1
+        ISR_ERRCODE i
+    %else
+        ISR_NOERRCODE i
+    %endif
+%assign i i+1
+%endrep
+
+
+section .rodata
+
+global isr_stub_table
+isr_stub_table:
+%assign i 0
+%rep 256
+    dq isr_stub_%[i] ; place addr of isr stub in r/o mem
+%assign i i+1
+%endrep

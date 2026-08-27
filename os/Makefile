@@ -12,11 +12,10 @@ CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie
 LDFLAGS := -nostdlib -T linker.ld
 LDLIBS := -lgcc
 
-SRCS := $(shell find x64/src -name '*.c')
-OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(SRCS))
-OBJS := \
-	$(OUTPUT)/x64/src/boot/boot.o \
-	$(OBJS)
+C_SRCS := $(shell find x64/src -name '*.c')
+ASM_SRCS := $(shell find x64/src -name '*.s')
+OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(C_SRCS)) \
+		$(patsubst x64/src/%.s,$(OUTPUT)/x64/%.o,$(ASM_SRCS))
 
 Q := @
 msg := @printf '  %-8s %s%s\n'					\
@@ -38,10 +37,12 @@ $(ISO): $(KERNEL)
 	$(Q)echo 'set timeout=0; set default=0; menuentry "hypervisor_debugger" { multiboot /boot/kernel }' > $(ISO_DIR)/boot/grub/grub.cfg
 	$(Q)grub-mkrescue -o $(ISO) $(ISO_DIR)
 
-$(OUTPUT)/x64/src/boot/boot.o: x64/src/boot/boot.s 
+$(OUTPUT)/x64/%.o: x64/src/%.s 
 	@mkdir -p $(dir $@)
 	$(call msg,ASM,$@)
-	$(Q)nasm -felf64 -o $@ $<
+	$(Q)$(CC) $(CPPFLAGS) -x assembler-with-cpp -E -P $< -o $(OUTPUT)/x64/$*.i
+	$(Q)nasm -felf64 -o $@ $(OUTPUT)/x64/$*.i
+	$(Q)rm -f $(OUTPUT)/x64/$*.i
 
 $(OUTPUT)/x64/%.o: x64/src/%.c
 	@mkdir -p $(dir $@)
