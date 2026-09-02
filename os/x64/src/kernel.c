@@ -25,7 +25,7 @@ void kernel_main(void)
 
     __asm__ volatile ("int3");
 
-    printf("IDT Handled software interrupt successfully!");
+    printf("IDT handled the software interrupt successfully!");
 
     for (;;) {
         __asm__ volatile ("hlt");

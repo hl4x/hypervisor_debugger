@@ -8,7 +8,7 @@ static struct tss64 tss = {0};
 extern uint8_t GDT[];
 extern uint8_t stack64_top[];
 
-static uint8_t df_stack[DOUBLE_FAULT_STACK_SIZE];
+static uint8_t df_stack[DOUBLE_FAULT_STACK_SIZE] __attribute__((aligned(16)));
 
 void init_tss()
 {
@@ -28,7 +28,7 @@ void init_tss()
     tss_desc->bits.zero = 0; 
     tss_desc->bits.dpl = 0;
     tss_desc->bits.p    = 1; // segment present
-    tss_desc->bits.limit1 = (uint8_t)((tss_limit >> 16) & 0x0F);
+    tss_desc->bits.limit1 = (uint8_t)((tss_limit >> 16) & 0x0F); // 4 bits for limit1
     tss_desc->bits.avl = 0;
     tss_desc->bits.reserved0 = 0;
     tss_desc->bits.g = 0;

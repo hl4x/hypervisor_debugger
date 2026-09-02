@@ -14,10 +14,6 @@ void isr_handler(struct isr_save_state *frame)
            frame->intr_vector_nr, 
            frame->err_code, 
            frame->iret.old_rip);
-
-    if (frame->intr_vector_nr == 3) {
-        frame->iret.old_rip += 1;
-    }
 }
 
 void init_idt(void)

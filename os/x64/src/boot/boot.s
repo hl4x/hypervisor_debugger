@@ -70,10 +70,15 @@ section .text
 bits 64
 global _start 
 _start:
-    mov rsp, stack64_top
+    ; flush the olf multiboot segment selectors
+    mov ax, 0x0 ; Null selector
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
 
-    ; mov ax, GDT.TSS
-    ; ltr ax
+    mov rsp, stack64_top
 
     call kernel_main
 .hang:
