@@ -37,10 +37,33 @@ KERNEL_LOAD_ADDRESS equ 0x00100000
 
 PORT equ 0x3f8 ; COM1
 
-IDT64:
+global GDT
+GDT: 
+    .Null: equ $ - GDT
+        dq 0
+
+    .Code: equ $ - GDT
+        dd 0xFFFF                                   ; Limit & Base (low, bits 0-15)
+        db 0                                        ; Base (mid, bits 16-23)
+        db PRESENT | NOT_SYS | EXEC | RW            ; Access
+        db GRAN_4K | LONG_MODE | 0xF                ; Flags & Limit (high, bits 16-19)
+        db 0                                        ; Base (high, bits 24-31)
+
+    .Data: equ $ - GDT
+        dd 0xFFFF                                   ; Limit & Base (low, bits 0-15)
+        db 0                                        ; Base (mid, bits 16-23)
+        db PRESENT | NOT_SYS | RW                   ; Access
+        db GRAN_4K | SZ_32 | 0xF                    ; Flags & Limit (high, bits 16-19)
+        db 0                                        ; Base (high, bits 24-31)
+
+    .TSS: equ $ - GDT
+        dq 0
+        dq 0 
+
     .Pointer:
-        dw $ - IDT64 - 1
-        dq IDT64
+        dw $ - GDT - 1
+        dq GDT
+
 
 ; Text start
 section .text
@@ -48,6 +71,10 @@ bits 64
 global _start 
 _start:
     mov rsp, stack64_top
+
+    ; mov ax, GDT.TSS
+    ; ltr ax
+
     call kernel_main
 .hang:
     cli
@@ -200,37 +227,11 @@ enter_long_mode:
     bts eax, 31
     mov cr0, eax
 
-    ltr [GDT64.TSS] 
-
-    lgdt [GDT64.Pointer] ; load the 64-bit global descriptor table
+    lgdt [GDT.Pointer] ; load the 64-bit global descriptor table
 
     db 0eah ; far jump so CS.L=1
     dd _start 
-    dw 8    ; offset into .Code GDT64 entry
-
-section .rodata
-GDT64: 
-    .Null: equ $ - GDT64
-        dq 0
-    .Code: equ $ - GDT64
-        dd 0xFFFF                                   ; Limit & Base (low, bits 0-15)
-        db 0                                        ; Base (mid, bits 16-23)
-        db PRESENT | NOT_SYS | EXEC | RW            ; Access
-        db GRAN_4K | LONG_MODE | 0xF                ; Flags & Limit (high, bits 16-19)
-        db 0                                        ; Base (high, bits 24-31)
-    .Data: equ $ - GDT64
-        dd 0xFFFF                                   ; Limit & Base (low, bits 0-15)
-        db 0                                        ; Base (mid, bits 16-23)
-        db PRESENT | NOT_SYS | RW                   ; Access
-        db GRAN_4K | SZ_32 | 0xF                    ; Flags & Limit (high, bits 16-19)
-        db 0                                        ; Base (high, bits 24-31)
-    .TSS: equ $ - GDT64
-        dd 0x00000068
-        dd 0x00CF8900
-    .Pointer:
-        dw $ - GDT64 - 1
-        dd GDT64
-
+    dw 8    ; offset into .Code GDT entry
 
 section .bss
 align 4096
@@ -247,6 +248,7 @@ stack32_top:
 
 ; Reserve 16 KiB for the 64-bit stack
 stack64_bottom: resb 16384
+global stack64_top
 stack64_top:
 
 

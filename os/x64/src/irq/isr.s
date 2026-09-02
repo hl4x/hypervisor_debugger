@@ -47,18 +47,14 @@
     jmp isr_common_stub
 %endmacro
 
-%assign ISR_ERRCODE_MASK \
-    (1 << IDT_DOUBLE_FAULT                  ) | \
-    (1 << IDT_INVALID_TSS                   ) | \
-    (1 << IDT_SEGMENT_NOT_PRESENT           ) | \
-    (1 << IDT_STACK_SEGMENT_FAULT           ) | \
-    (1 << IDT_GENERAL_PROTECTION_FAULT      ) | \
-    (1 << IDT_PAGE_FAULT                    ) | \
-    (1 << IDT_ALIGNMENT_CHECK               ) | \
-    (1 << IDT_CONTROL_PROTECTION_EXCEPTION  ) | \
-    (1 << IDT_VMM_COMMUNICATION             ) | \
-    (1 << IDT_SECURITY_EXCEPTION            )
-
+%define HAS_ERRCODE(i) ( \
+    i == IDT_DOUBLE_FAULT || \
+    (i >= IDT_INVALID_TSS && i <= IDT_PAGE_FAULT) || \
+    i == IDT_ALIGNMENT_CHECK || \
+    i == IDT_CONTROL_PROTECTION_EXCEPTION || \
+    i == IDT_VMM_COMMUNICATION || \
+    i == IDT_SECURITY_EXCEPTION \
+)
 
 section .text
 
@@ -77,7 +73,7 @@ isr_common_stub:
 %assign i 0
 %rep 256
 isr_stub_%[i]:
-    %if (ISR_ERRCODE_MASK >> i) & 1
+    %if HAS_ERRCODE(i) 
         ISR_ERRCODE i
     %else
         ISR_NOERRCODE i

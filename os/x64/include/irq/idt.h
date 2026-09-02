@@ -9,8 +9,12 @@
 #define TRAP_GATE   0x0F
 #define INTR_GATE   0x0E
 
-#define TRAP_TYPE_MASK  (1ULL << IDT_DOUBLE_FAULT | 1ULL << IDT_OVERFLOW )
-#define IST_ONE_MASK    (1ULL << IDT_DOUBLE_FAULT | 1ULL << IDT_NMI_INTERRUPT | 1ULL << IDT_VMM_COMMUNICATION )
+//#define TRAP_TYPE_MASK  (1ULL << IDT_DOUBLE_FAULT | 1ULL << IDT_OVERFLOW )
+//#define IST_ONE_MASK    (1ULL << IDT_DOUBLE_FAULT | 1ULL << IDT_NMI_INTERRUPT | 1ULL << IDT_VMM_COMMUNICATION )
+#define IS_TRAP_GATE(v) ((v) == IDT_BREAKPOINT || (v) == IDT_OVERFLOW)
+#define IS_IST_ONE(v)   ((v) == IDT_DOUBLE_FAULT || \
+                         (v) == IDT_NMI_INTERRUPT || \
+                         (v) == IDT_VMM_COMMUNICATION)
 
 #define __KERNEL_CS 0x8
 
@@ -86,5 +90,7 @@ static inline void native_load_idt(const struct desc_ptr *dtr)
 }
 
 extern void *isr_stub_table[256];
+
+void init_idt(void);
 
 #endif 
