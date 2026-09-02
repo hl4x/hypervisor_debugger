@@ -3,12 +3,14 @@
 #include "irq/idt.h"
 #include "cpu/tss.h"
 #include "util/printf.h"
+#include "mm/mm.h"
 #include "kernel.h"
 
 void init64()
 {
     init_idt();
     init_tss();
+    init_bump_allocator();
 }
 
 void kernel_main(void)
@@ -25,7 +27,10 @@ void kernel_main(void)
 
     __asm__ volatile ("int3");
 
-    printf("IDT handled the software interrupt successfully!");
+    printf("IDT handled the software interrupt successfully!\n");
+
+    void *page = bump_alloc(10);
+    printf("Got page from bump allocator: 0x%p\n", (uint64_t)page);
 
     for (;;) {
         __asm__ volatile ("hlt");

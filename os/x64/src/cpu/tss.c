@@ -21,20 +21,20 @@ void init_tss()
     tss.iopb_offset = sizeof(struct tss64);
 
     tss_desc->limit0 = (uint16_t)(tss_limit & 0xFFFF);
-    tss_desc->base0 = (uint16_t)(tss_base & 0xFFFF);
+    tss_desc->base0  = (uint16_t)(tss_base & 0xFFFF);
 
-    tss_desc->bits.base1 = (uint8_t) ((tss_base >> 16) & 0xFF);
-    tss_desc->bits.type = 0x9; // Available 64-bit TSS
-    tss_desc->bits.zero = 0; 
-    tss_desc->bits.dpl = 0;
-    tss_desc->bits.p    = 1; // segment present
-    tss_desc->bits.limit1 = (uint8_t)((tss_limit >> 16) & 0x0F); // 4 bits for limit1
-    tss_desc->bits.avl = 0;
-    tss_desc->bits.reserved0 = 0;
-    tss_desc->bits.g = 0;
-    tss_desc->bits.base2 = (uint8_t)((tss_base >> 24) & 0xFF);
+    tss_desc->bits.base1        = (uint8_t) ((tss_base >> 16) & 0xFF);
+    tss_desc->bits.type         = 0x9; // Available 64-bit TSS
+    tss_desc->bits.zero         = 0;
+    tss_desc->bits.dpl          = 0;
+    tss_desc->bits.p            = 1; // segment present
+    tss_desc->bits.limit1       = (uint8_t)((tss_limit >> 16) & 0x0F); // 4 bits for limit1
+    tss_desc->bits.avl          = 0;
+    tss_desc->bits.reserved0    = 0;
+    tss_desc->bits.g            = 0;
+    tss_desc->bits.base2        = (uint8_t)((tss_base >> 24) & 0xFF);
 
-    tss_desc->base3 = (uint32_t)((tss_base >> 32) & 0xFFFFFFFF);
+    tss_desc->base3     = (uint32_t)((tss_base >> 32) & 0xFFFFFFFF);
     tss_desc->reserved1 = 0;
 
     __asm__ volatile ("ltr %0" : : "r" ((uint16_t)TSS_SEGMENT_SELECTOR) : "memory");
