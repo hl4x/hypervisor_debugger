@@ -7,9 +7,9 @@ For GDT: \
 Create a real 64-bit TSS and load TR with ltr
 
 
-1. Clean up GDT
-2. Basic physical memory allocator
-3. IDT + exception handlers
+Done :D 1. Clean up GDT
+Done :D 2. Basic physical memory allocator
+Done :D 3. IDT + exception handlers
 4. SVM capability detection
 5. Enable SVM
 6. Allocate VMCB + host-save area

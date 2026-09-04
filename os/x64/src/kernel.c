@@ -47,8 +47,8 @@ void kernel_main(uint32_t mb_addr)
 
     printf("IDT handled the software interrupt successfully!\n");
 
-    void *page = bump_alloc(10);
-    printf("Got memory from bump allocator: 0x%p\n", (uint64_t)page);
+    void *mem = bump_alloc(10);
+    printf("Got memory from bump allocator: 0x%p\n", (uint64_t)mem);
 
     for (;;) {
         __asm__ volatile ("hlt");
