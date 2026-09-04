@@ -7,8 +7,8 @@ TOOLCHAIN := $(abspath ../toolchain)
 CC := $(abspath $(TOOLCHAIN)/x86_64/bin/x86_64-elf-gcc)
 
 MAKEFLAGS += --no-print-directory
-CPPFLAGS := -Ix64/include
-CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie
+CPPFLAGS := -Ix64/include -DPRINTF_DISABLE_SUPPORT_FLOAT
+CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -msoft-float -mno-red-zone
 LDFLAGS := -nostdlib -T linker.ld
 LDLIBS := -lgcc
 

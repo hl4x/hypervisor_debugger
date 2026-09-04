@@ -70,13 +70,15 @@ section .text
 bits 64
 global _start 
 _start:
-    ; flush the olf multiboot segment selectors
+    ; flush the old multiboot segment selectors
     mov ax, 0x0 ; Null selector
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
+
+    mov edi, ebx
 
     mov rsp, stack64_top
 
