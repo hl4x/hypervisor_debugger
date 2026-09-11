@@ -4,7 +4,9 @@
 #include "kernel/multiboot.h"
 #include "irq/idt.h"
 #include "cpu/tss.h"
+#include "cpu/cpu.h"
 #include "util/printf.h"
+#include "util/bug.h"
 #include "mm/mm.h"
 
 void init64()
@@ -49,6 +51,9 @@ void kernel_main(uint32_t mb_addr)
 
     void *mem = bump_alloc(10);
     printf("Got memory from bump allocator: 0x%p\n", (uint64_t)mem);
+
+    BUG_ON(!cpuid_supported(), "CPUID not supported, exiting...");
+    printf("CPUID supported!");
 
     for (;;) {
         __asm__ volatile ("hlt");
