@@ -1,9 +1,10 @@
-OUTPUT := $(abspath .output)
+MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+OUTPUT := $(abspath $(MAKEFILE_DIR)/.output)
 KERNEL := $(OUTPUT)/kernel
 ISO_DIR := $(OUTPUT)/isodir
 ISO := $(OUTPUT)/hypervisor_debugger.iso
 
-TOOLCHAIN := $(abspath ../toolchain)
+TOOLCHAIN := $(abspath $(MAKEFILE_DIR)/../toolchain)
 CC := $(abspath $(TOOLCHAIN)/x86_64/bin/x86_64-elf-gcc)
 
 MAKEFLAGS += --no-print-directory
