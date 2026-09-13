@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <ptrcheck.h>
 
 #include "mm/mm.h"
 #include "kernel/multiboot.h"
@@ -34,13 +35,14 @@ void parse_multiboot_memory(uint32_t mb_addr)
     }
 }
 
-void* bump_alloc(uint64_t size)
+void *__sized_by(size) bump_alloc(uint64_t size)
 {
     BUG_ON(!bump_ptr || !range_end, "bump_ptr and range_end not initialized");
     // Align size to the next page boundary (e.g. size = 10 -> 4096)
-    size = (size + 0xFFF) & ~0xFFF;
-    BUG_ON(bump_ptr + size > range_end, "Out of physical memory in bump allocator, Bump Pointer %lxh", bump_ptr);
+    uint64_t aligned_size = (size + 0xFFF) & ~0xFFF;
+    BUG_ON(aligned_size < size, "bump_alloc: aligned size overflow, size=%lx aligned_size=%lx", size, aligned_size);
+    BUG_ON(bump_ptr + aligned_size > range_end, "Out of physical memory in bump allocator, Bump Pointer %lxh", bump_ptr);
     uint64_t ptr = bump_ptr;
-    bump_ptr += size;
+    bump_ptr += aligned_size;
     return (void*)ptr;
 }

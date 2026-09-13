@@ -4,14 +4,14 @@ KERNEL := $(OUTPUT)/kernel
 ISO_DIR := $(OUTPUT)/isodir
 ISO := $(OUTPUT)/hypervisor_debugger.iso
 
-TOOLCHAIN := $(abspath $(MAKEFILE_DIR)/../toolchain)
-CC := $(abspath $(TOOLCHAIN)/x86_64/bin/x86_64-elf-gcc)
+TOOLCHAIN := $(abspath $(HOME)/toolchain)
+CC := $(abspath $(TOOLCHAIN)/x86_64-bounds-safety/bin/clang)
 
 MAKEFLAGS += --no-print-directory
-CPPFLAGS := -Ix64/include -DPRINTF_DISABLE_SUPPORT_FLOAT
+CPPFLAGS := -Ix64/include -DPRINTF_DISABLE_SUPPORT_FLOAT --target=x86_64-unknown-elf
 CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -msoft-float -mno-red-zone
-LDFLAGS := -nostdlib -T linker.ld
-LDLIBS := -lgcc
+LDFLAGS := -Wl,--build-id=none -nostdlib -T linker.ld --target=x86_64-unknown-none -no-pie
+LDLIBS :=
 
 C_SRCS := $(shell find x64/src -name '*.c')
 ASM_SRCS := $(shell find x64/src -name '*.s')
