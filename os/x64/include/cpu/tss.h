@@ -1,9 +1,10 @@
 #ifndef __TSS_H
 #define __TSS_H
 
+#include <stdint.h>
+
 #define TSS_SEGMENT_SELECTOR 0x18
 
-#define KERNEL_STACK_SIZE       8192
 #define DOUBLE_FAULT_STACK_SIZE 4096
 
 struct tss64 {
@@ -36,6 +37,7 @@ struct tss_descriptor {
     uint32_t base3;
     uint32_t reserved1;
 } __attribute__((packed));
+typedef struct tss_descriptor tss_descriptor_t;
 
 void init_tss(void);
 

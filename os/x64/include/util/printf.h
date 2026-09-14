@@ -34,7 +34,7 @@
 
 #include <stdarg.h>
 #include <stddef.h>
-
+#include <ptrcheck.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,8 +68,8 @@ int printf_(const char* format, ...);
  * \param format A string that specifies the format of the output
  * \return The number of characters that are WRITTEN into the buffer, not counting the terminating null character
  */
-#define sprintf sprintf_
-int sprintf_(char* buffer, const char* format, ...);
+//#define sprintf sprintf_
+//int sprintf_(char* buffer, const char* format, ...);
 
 
 /**
@@ -84,8 +84,8 @@ int sprintf_(char* buffer, const char* format, ...);
  */
 #define snprintf  snprintf_
 #define vsnprintf vsnprintf_
-int  snprintf_(char* buffer, size_t count, const char* format, ...);
-int vsnprintf_(char* buffer, size_t count, const char* format, va_list va);
+int  snprintf_(char *__sized_by(count) buffer, size_t count, const char* format, ...);
+int vsnprintf_(char *__sized_by(count) buffer, size_t count, const char* format, va_list va);
 
 
 /**

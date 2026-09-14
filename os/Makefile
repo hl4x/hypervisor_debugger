@@ -8,9 +8,10 @@ TOOLCHAIN := $(abspath $(HOME)/toolchain)
 CC := $(abspath $(TOOLCHAIN)/x86_64-bounds-safety/bin/clang)
 
 MAKEFLAGS += --no-print-directory
-CPPFLAGS := -Ix64/include -DPRINTF_DISABLE_SUPPORT_FLOAT --target=x86_64-unknown-elf
-CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -msoft-float -mno-red-zone
-LDFLAGS := -Wl,--build-id=none -nostdlib -T linker.ld --target=x86_64-unknown-none -no-pie
+TARGET := --target=x86_64-unknown-elf
+CPPFLAGS := -Ix64/include -DPRINTF_DISABLE_SUPPORT_FLOAT $(TARGET)
+CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie -mno-sse -mno-mmx -mno-sse2 -mno-3dnow -msoft-float -mno-red-zone -fbounds-safety
+LDFLAGS := -nostdlib -T linker.ld -z noexecstack
 LDLIBS :=
 
 C_SRCS := $(shell find x64/src -name '*.c')
@@ -29,7 +30,7 @@ all: $(ISO)
 
 $(KERNEL): $(OBJS)
 	$(call msg,LD,$@)
-	$(Q)$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(Q)ld $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(ISO): $(KERNEL)
 	$(call msg,ISO,$@)

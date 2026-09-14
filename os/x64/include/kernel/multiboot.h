@@ -1,6 +1,8 @@
 #ifndef __MULTIBOOT_H
 #define __MULTIBOOT_H
 
+#include <stdint.h>
+
 // https://www.gnu.org/software/grub/manual/multiboot/multiboot.html#Boot-information-format
 #define MULTIBOOT_INFO_MEMORY   0x00000001
 #define MULTIBOOT_INFO_MEM_MAP  0x00000040
