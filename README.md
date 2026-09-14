@@ -1,6 +1,7 @@
-Toolchain: \
-&emsp; `wget https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/x86_64-elf-tools-linux.zip` \
-&emsp; `wget https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/i686-elf-tools-linux.zip`
+Toolchain:
+<!--  &emsp; `wget https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/x86_64-elf-tools-linux.zip` \ -->
+<!--  &emsp; `wget https://github.com/lordmilko/i686-elf-tools/releases/download/15.2.0/i686-elf-tools-linux.zip` -->
+&emsp; `chmod +x os/scripts/get_and_build_llvm.sh; ./os/scripts/get_and_build_llvm.sh`
 
 Tested on: \
 &emsp; AMD Ryzen 5 2600 \
