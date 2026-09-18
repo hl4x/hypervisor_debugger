@@ -23,7 +23,7 @@ Next (see `NOTES.md`):
   - `Linux phanteks-desktop 7.0.0-28-generic #28~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 GNU/Linux`
 - Packages:
   ```sh
-  sudo apt install grub-pc-bin qemu-system-x86 nasm gdb git cmake ninja-build
+  sudo apt install grub-pc-bin qemu-system-x86 nasm gdb git cmake ninja-build mtools
   ```
 
 ## Toolchain
