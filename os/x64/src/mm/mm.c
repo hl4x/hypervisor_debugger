@@ -2,6 +2,7 @@
 #include <ptrcheck.h>
 
 #include "mm/mm.h"
+#include "mm/paging.h"
 #include "kernel/multiboot.h"
 #include "util/bug.h"
 
@@ -49,6 +50,11 @@ void parse_multiboot_memory(uint32_t mb_addr)
     }
 }
 
+void setup_runtime_pages()
+{
+
+}
+
 void *__sized_by(size) bump_alloc(uint64_t size)
 {
     BUG_ON(!bump_ptr || !range_end, "bump_ptr and range_end not initialized");
@@ -60,4 +66,9 @@ void *__sized_by(size) bump_alloc(uint64_t size)
     uint64_t ptr = bump_ptr;
     bump_ptr += size_aligned;
     return __unsafe_forge_bidi_indexable(void*, ptr, size);
+}
+
+void *memset(void *__sized_by(n) s, int c, size_t n)
+{
+
 }

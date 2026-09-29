@@ -75,11 +75,13 @@ run: $(ISO)
 debug: $(ISO)
 	$(call msg,QEMU,Starting VM...)
 	$(Q)qemu-system-x86_64 \
-		-smp 2 \
-		-cpu host \
+		-smp 1 \
+		-cpu qemu64 \
 		-m 4G \
 		-cdrom $(ISO) \
-		-enable-kvm \
 		-nographic \
+		-no-reboot \
+		-d cpu_reset,int,guest_errors \
+		-D $(OUTPUT)/qemu.log \
 		-monitor telnet:127.0.0.1:1235,server,nowait \
 		-s -S

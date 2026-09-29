@@ -31,14 +31,14 @@ GRAN_4K       equ 1 << 7
 SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
 
-BOOT_INIT_PGT_SIZE equ 4 * 4096
+BOOT_INIT_PGT_SIZE equ 3 * 4096
 
 KERNEL_LOAD_ADDRESS equ 0x00100000
 
 PORT equ 0x3f8 ; COM1
 
 global GDT
-GDT: 
+GDT:
     .Null: equ $ - GDT
         dq 0
 
@@ -58,7 +58,7 @@ GDT:
 
     .TSS: equ $ - GDT
         dq 0
-        dq 0 
+        dq 0
 
     .Pointer:
         dw $ - GDT - 1
@@ -69,7 +69,7 @@ GDT:
 section .text
 bits 64
 
-global _start 
+global _start
 _start:
     ; flush the old multiboot segment selectors
     mov ax, 0x0 ; Null selector
@@ -117,7 +117,7 @@ start32:
     call enter_long_mode
 .hang:
     cli
-    hlt 
+    hlt
     jmp .hang
 
 cpuid_supported:
@@ -143,7 +143,7 @@ init_serial:
     ;
     mov dx, PORT + 1 ; DX = destination port
     xor al, al       ; AL = value
-    out dx, al 
+    out dx, al
 
     mov dx, PORT + 3
     mov al, 0x80
@@ -186,7 +186,7 @@ init_serial:
 
 setup_pgtable:
     ;
-    ; Identity map the first 2 MiB of physicial memory
+    ; Identity map the first 1 GB of physical memory using 2 MB physical pages
     ;
     xor edi, edi
     ; essentially memset(pgtable, 0, BOOT_INIT_PGT_SIZE)
@@ -195,33 +195,29 @@ setup_pgtable:
     mov ecx, BOOT_INIT_PGT_SIZE / 4
     rep stosd
 
-    ; construct pml4 
-    ; PML4[0] -> PDPE
+    ; construct pml4
+    ; PML4[0] -> PDP
     mov edi, pml4_base
-    mov eax, pdpe_base + 3 ; 3 (0b11) for Present and W/R page-translation bits
+    mov eax, pdp_base
+    or eax, 0b11 ; 0b11 for Present and W/R page-translation bits
     mov dword [edi], eax
 
     ; construct pdpe
-    ; PDPE[0] -> PDE
-    mov edi, pdpe_base
-    mov eax, pde_base + 3
+    ; PDP[0] -> PD
+    mov edi, pdp_base
+    mov eax, pd_base
+    or eax, 0b11
     mov dword [edi], eax
 
-    ; construct pde
-    ; PDE[0] -> PTE
-    mov edi, pde_base
-    mov eax, pte_base + 3
-    mov dword [edi], eax
-
-    ; construct and populate PTEs
+    ; populate PDEs
     ; kernel starts at 0x00100000 (1 MiB) from the linker script
-    mov edi, pte_base
-    mov eax, 3 ; Present and W/R bits
+    mov edi, pd_base
+    mov eax, 0b10000011 ; 0b1000011 for PDE.PS = 1, P, and W/R bits
     mov ecx, 512
 .map:
     mov dword [edi], eax
     add edi, 8
-    add eax, 0x1000
+    add eax, 0x200000 ; 2 MB
     loop .map
 
     ret
@@ -229,7 +225,7 @@ setup_pgtable:
 enter_long_mode:
     ; disable paging (CR0.PG=0)
     mov eax, cr0
-    btr eax, 31 ; CR0.PG is bit 31 
+    btr eax, 31 ; CR0.PG is bit 31
     mov cr0, eax
 
     ; enable PAE
@@ -255,7 +251,7 @@ enter_long_mode:
     lgdt [GDT.Pointer] ; load the 64-bit global descriptor table
 
     db 0eah ; far jump so CS.L=1
-    dd _start 
+    dd _start
     dw 8    ; offset into .Code GDT entry
 
 section .bss
@@ -263,9 +259,8 @@ align 4096
 
 ; Reserve 4 KiB for each page table
 pml4_base: resb 4096
-pdpe_base: resb 4096
-pde_base:  resb 4096
-pte_base:  resb 4096
+pdp_base: resb 4096
+pd_base:  resb 4096
 
 ; Reserve 16 KiB for the 32-bit stack
 stack32_bottom: resb 16384
@@ -275,5 +270,3 @@ stack32_top:
 stack64_bottom: resb 16384
 global stack64_top
 stack64_top:
-
-
