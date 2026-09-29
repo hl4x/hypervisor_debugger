@@ -50,8 +50,15 @@ void kernel_main(uint32_t mb_addr)
 
     printf("IDT handled the software interrupt successfully!\n");
 
-    void *mem = bump_alloc(10);
+    uint8_t* mem = (uint8_t*)bump_alloc(0x10);
     printf("Got memory from bump allocator: 0x%p\n", (uint64_t)mem);
+    for (uint8_t i =0; i < 0x10; i++) {
+        mem[i] = 0xff;
+    }
+    memset(mem, 0x41, 20);
+    for (size_t i = 0; i < 16; i++)
+        printf("%02x ", mem[i]);
+    printf("\n");
 
     svm_status_t svm_status = svm_get_status();
     BUG_ON(svm_status != SVM_ALLOWED, "SVM not usable: %s (%d)\n", svm_status_str(svm_status), svm_status);

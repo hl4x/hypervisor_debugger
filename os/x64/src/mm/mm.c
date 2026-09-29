@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 #include <ptrcheck.h>
 
 #include "mm/mm.h"
@@ -68,7 +69,11 @@ void *__sized_by(size) bump_alloc(uint64_t size)
     return __unsafe_forge_bidi_indexable(void*, ptr, size);
 }
 
-void *memset(void *__sized_by(n) s, int c, size_t n)
+void *__sized_by(n) memset(void *__sized_by(n) s, uint8_t c, size_t n)
 {
-
+    uint8_t *local_s = (uint8_t*)s;
+    size_t i = 0;
+    while (i < n)
+        local_s[i++] = c;
+    return s;
 }
