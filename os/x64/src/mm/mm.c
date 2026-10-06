@@ -41,8 +41,10 @@ void parse_multiboot_memory(uint32_t mb_addr)
         uint64_t current_addr = (uint64_t)multiboot_info->mmap_addr + offset;
         multiboot_memory_map_t *mmap_entry = __unsafe_forge_single(multiboot_memory_map_t*, current_addr);
         if (mmap_entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
-            if (range_idx >= 64)
-                break;
+            BUG_ON(range_idx >= USABLE_RANGE_MAX,
+                   "too many memory mappings found in multiboot info, consider increasing USABLE_RANGE_MAX range_idx=%lu, USABLE_RANGE_MAX=%lu",
+                   range_idx, USABLE_RANGE_MAX);
+
             uint64_t mmap_entry_start = mmap_entry->addr;
             uint64_t mmap_entry_end = mmap_entry_start + mmap_entry->len;
 
@@ -50,8 +52,8 @@ void parse_multiboot_memory(uint32_t mb_addr)
                    "parse_multiboot_memory: mmap_entry_end overflow, mmap_entry_start 0x%lx mmap_entry_end 0x%lx",
                    mmap_entry_start, mmap_entry_end);
 
-            uint64_t s = align_up(max(mmap_entry_start, kernel_end_addr), 4096);
-            uint64_t e = align_down(mmap_entry_end, 4096);
+            uint64_t s = align_up(max(mmap_entry_start, kernel_end_addr), FOUR_K);
+            uint64_t e = align_down(mmap_entry_end, FOUR_K);
 
             // kernel_end_addr can be greater than the particular mmap_entry_end
             if (s >= e)
@@ -75,6 +77,7 @@ inc_offset:
         offset = next_offset;
     }
 
+    BUG_ON(usable_range_count == 0, "no usable ranges found, usable_range_count=%lu", usable_range_count);
     range_idx = 0;
     bump_ptr = usable_ranges[range_idx].start;
     range_start = usable_ranges[range_idx].start;
@@ -89,17 +92,47 @@ void setup_runtime_pages()
     }
 }
 
-void *__sized_by(size) bump_alloc(uint64_t size)
+void try_get_next_usable_range()
+{
+    range_idx++;
+    if (range_idx >= usable_range_count)
+        BUG_ON(1,
+               "Out of usable memory ranges, range_idx=%lu usable_range_count=%lu",
+               range_idx, usable_range_count);
+    bump_ptr = usable_ranges[range_idx].start;
+    range_start = usable_ranges[range_idx].start;
+    range_end = usable_ranges[range_idx].end;
+}
+
+void *__sized_by(size) bump_alloc_aligned(uint64_t size, uint64_t align)
 {
     BUG_ON(!bump_ptr || !range_end, "bump_ptr and range_end not initialized");
-    // Align size to the next page boundary (e.g. size = 10 -> size_aligned = 4096)
-    uint64_t size_aligned = (size + 0xFFF) & ~0xFFF;
-    BUG_ON(size_aligned < size, "bump_alloc: aligned size overflow, size=0x%lx size_aligned=0x%lx", size, size_aligned);
+
+    // aligned size to next 4096 boundary
+    uint64_t size_aligned = align_up(size, FOUR_K);
+
+retry:
+    // make sure bump_ptr is aligned to the request b/c ptr is copied from bump_ptr
+    bump_ptr = align_up(bump_ptr, align);
     BUG_ON(bump_ptr + size_aligned < bump_ptr, "bump_alloc: bump_ptr overflow, bump_ptr = 0x%lx", bump_ptr);
-    BUG_ON(bump_ptr + size_aligned > range_end, "Out of physical memory in bump allocator, Bump Pointer %lxh", bump_ptr);
+    // if out of phys memory in this range, look for another available range
+    if (bump_ptr + size_aligned > range_end) {
+        try_get_next_usable_range();
+        // re-align our new bump_ptr
+        goto retry;
+    }
     uint64_t ptr = bump_ptr;
     bump_ptr += size_aligned;
+
     return __unsafe_forge_bidi_indexable(void*, ptr, size);
+}
+
+void *__sized_by(size) bump_alloc(uint64_t size)
+{
+    // default page granularity is 4K
+    // use bump_alloc_aligned(size, TWO_MB) explcity for PS=1 entries
+    // 4K granularity shouldn't break future 2MB allocs as 2MB % 4K == 0
+    return bump_alloc_aligned(size, FOUR_K);
 }
 
 void *__sized_by(n) memset(void *__sized_by(n) s, uint8_t c, size_t n)
