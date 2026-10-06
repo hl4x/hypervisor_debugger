@@ -6,9 +6,18 @@
 #include "mm/paging.h"
 #include "kernel/multiboot.h"
 #include "util/bug.h"
+#include "util/util.h"
 
 uint64_t bump_ptr;
+uint64_t range_start;
 uint64_t range_end;
+
+// 64 entries should be enough
+range_t usable_ranges[USABLE_RANGE_MAX];
+uint64_t usable_range_count;
+uint64_t range_idx;
+
+uint64_t kernel_end_addr;
 
 void parse_multiboot_memory(uint32_t mb_addr)
 {
@@ -18,28 +27,44 @@ void parse_multiboot_memory(uint32_t mb_addr)
         return;
     }
 
+    range_idx = 0;
+    kernel_end_addr = (uint64_t)&_kernel_end;
+    usable_range_count = 0;
+
     uint32_t mem_length = multiboot_info->mmap_length;
     uint64_t offset = 0;
     while (offset < mem_length) {
         BUG_ON(mem_length - offset < sizeof(multiboot_memory_map_t),
                "parse_multiboot_memory: trailing partial mmap entry, offset 0x%lx len 0x%x",
                offset, mem_length);
+
         uint64_t current_addr = (uint64_t)multiboot_info->mmap_addr + offset;
         multiboot_memory_map_t *mmap_entry = __unsafe_forge_single(multiboot_memory_map_t*, current_addr);
         if (mmap_entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
+            if (range_idx >= 64)
+                break;
             uint64_t mmap_entry_start = mmap_entry->addr;
             uint64_t mmap_entry_end = mmap_entry_start + mmap_entry->len;
+
             BUG_ON(mmap_entry_end < mmap_entry_start,
                    "parse_multiboot_memory: mmap_entry_end overflow, mmap_entry_start 0x%lx mmap_entry_end 0x%lx",
                    mmap_entry_start, mmap_entry_end);
-            uint64_t kernel_end_addr = (uint64_t)&_kernel_end;
-            if (kernel_end_addr >= mmap_entry_start &&
-                kernel_end_addr < mmap_entry_end) {
-                    range_end = mmap_entry_end;
-                    bump_ptr = (uint64_t)&_kernel_end;
-                    break;
-                }
+
+            uint64_t s = align_up(max(mmap_entry_start, kernel_end_addr), 4096);
+            uint64_t e = align_down(mmap_entry_end, 4096);
+
+            // kernel_end_addr can be greater than the particular mmap_entry_end
+            if (s >= e)
+                goto inc_offset;
+
+            usable_ranges[range_idx].start = s;
+            usable_ranges[range_idx].end = e;
+            range_idx++;
+            usable_range_count++;
         }
+
+inc_offset:
+        // https://elixir.bootlin.com/grub/grub-2.14/source/grub-core/loader/i386/multiboot_mbi.c#L274
         uint64_t next_offset = offset + mmap_entry->size + sizeof(mmap_entry->size);
         BUG_ON(next_offset < offset,
                "parse_multiboot_memory: offset overflow, offset 0x%lx size 0x%x",
@@ -49,11 +74,19 @@ void parse_multiboot_memory(uint32_t mb_addr)
                offset, mmap_entry->size, mem_length);
         offset = next_offset;
     }
+
+    range_idx = 0;
+    bump_ptr = usable_ranges[range_idx].start;
+    range_start = usable_ranges[range_idx].start;
+    range_end = usable_ranges[range_idx].end;
 }
 
 void setup_runtime_pages()
 {
-
+    for (uint64_t i = 0; i < usable_range_count; i++) {
+        printf("RANGE START: 0x%lx\tRANGE_END: 0x%lx\n",
+               usable_ranges[i].start, usable_ranges[i].end);
+    }
 }
 
 void *__sized_by(size) bump_alloc(uint64_t size)

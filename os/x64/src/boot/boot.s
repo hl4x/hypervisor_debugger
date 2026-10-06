@@ -258,6 +258,9 @@ section .bss
 align 4096
 
 ; Reserve 4 KiB for each page table
+global pml4_base
+global pdp_base
+global pd_base
 pml4_base: resb 4096
 pdp_base: resb 4096
 pd_base:  resb 4096

@@ -10,16 +10,17 @@
 #include "util/bug.h"
 #include "mm/mm.h"
 
-void init64()
+void init64(uint32_t mb_addr)
 {
     init_idt();
     init_tss();
+    parse_multiboot_memory(mb_addr);
+    setup_runtime_pages();
 }
 
 void kernel_main(uint32_t mb_addr)
 {
-    init64();
-    parse_multiboot_memory(mb_addr);
+    init64(mb_addr);
 
     printf(CLEAR_SCREEN);
     // https://emojicombos.com/ocean-ascii-art
@@ -55,7 +56,7 @@ void kernel_main(uint32_t mb_addr)
     for (uint8_t i =0; i < 0x10; i++) {
         mem[i] = 0xff;
     }
-    memset(mem, 0x41, 20);
+    memset(mem, 0x41, 10);
     for (size_t i = 0; i < 16; i++)
         printf("%02x ", mem[i]);
     printf("\n");

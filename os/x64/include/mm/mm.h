@@ -1,8 +1,17 @@
 #ifndef __MM_H
 #define __MM_H
 
+#include <stdint.h>
 #include <stddef.h>
 #include <ptrcheck.h>
+
+#define USABLE_RANGE_MAX 64
+
+struct range
+{
+    uint64_t start, end;
+} __attribute((packed));
+typedef struct range range_t;
 
 extern uint8_t _kernel_end;
 
