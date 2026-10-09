@@ -7,7 +7,7 @@
 
 #define CLEAR_SCREEN "\e[1;1H\e[2J"
 
-void init64(uint32_t mb_addr);
-void kernel_main(uint32_t mb_addr);
+void init64(multiboot_info_t *mb);
+void kernel_main(multiboot_info_t *mb);
 
 #endif // __KERNEL_H

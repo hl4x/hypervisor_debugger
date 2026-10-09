@@ -10,17 +10,17 @@
 #include "util/bug.h"
 #include "mm/mm.h"
 
-void init64(uint32_t mb_addr)
+void init64(multiboot_info_t *mb)
 {
     init_idt();
     init_tss();
-    parse_multiboot_memory(mb_addr);
+    parse_multiboot_memory(mb);
     setup_runtime_pages();
 }
 
-void kernel_main(uint32_t mb_addr)
+void kernel_main(multiboot_info_t *mb)
 {
-    init64(mb_addr);
+    init64(mb);
 
     printf(CLEAR_SCREEN);
     // https://emojicombos.com/ocean-ascii-art
