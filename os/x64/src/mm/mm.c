@@ -19,8 +19,6 @@ static uint64_t range_idx_parse, range_idx_alloc;
 
 static uint64_t kernel_end_addr;
 
-static uint64_t pml4_addr;
-
 void parse_multiboot_memory(multiboot_info_t *mb)
 {
     BUG_ON(!(mb->flags & MULTIBOOT_INFO_MEM_MAP),
@@ -85,11 +83,11 @@ inc_offset:
     range_end = usable_ranges[range_idx_alloc].end;
 }
 
-void setup_runtime_pages(void)
+// identity map kernel + available ranges
+void map_available_ranges(void)
 {
     uint64_t *__counted_by(512) pml4 = bump_alloc_aligned(FOUR_K, FOUR_K);
     memset(pml4, 0, FOUR_K);
-    pml4_addr = (uint64_t)pml4;
 
     // add one for the kernel itself
     uint64_t map_list_count = usable_range_count + 1;
@@ -103,7 +101,6 @@ void setup_runtime_pages(void)
 
     for (uint64_t i = 0; i < map_list_count; i++) {
         uint64_t entry_idx = 0;
-
         uint64_t cur_addr = map_list[i].start;
         uint64_t end = map_list[i].end;
 

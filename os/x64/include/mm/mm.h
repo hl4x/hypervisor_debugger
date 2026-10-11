@@ -27,7 +27,7 @@ void *__sized_by(size) phys_map(uint64_t pa, uint64_t size)
 }
 
 void parse_multiboot_memory(multiboot_info_t *mb);
-void setup_runtime_pages(void);
+void map_available_ranges(void);
 void *__sized_by(size) bump_alloc(uint64_t size);
 void *__sized_by(size) bump_alloc_aligned(uint64_t size, uint64_t align);
 void *__sized_by(n) memset(void *__sized_by(n) s, uint8_t c, size_t n);

@@ -15,7 +15,7 @@ void init64(multiboot_info_t *mb)
     init_idt();
     init_tss();
     parse_multiboot_memory(mb);
-    setup_runtime_pages();
+    map_available_ranges();
 }
 
 void kernel_main(multiboot_info_t *mb)
