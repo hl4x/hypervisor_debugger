@@ -17,7 +17,7 @@ static inline
 uint64_t read_cr3(void)
 {
     uint64_t a;
-    __asm__ volatile ("mov %%cr3, %c0" : "=a"(a) : : "memory");
+    __asm__ volatile ("mov %%cr3, %0" : "=a"(a) : : "memory");
     return a;
 }
 
