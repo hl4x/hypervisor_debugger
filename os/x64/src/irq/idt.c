@@ -10,9 +10,9 @@ struct desc_ptr idtr;
 
 void isr_handler(struct isr_save_state *frame)
 {
-    printf("VEC: %lu, ERR: 0x%lx, RIP: 0x%lx\n", 
-           frame->intr_vector_nr, 
-           frame->err_code, 
+    printf("VEC: %lu, ERR: 0x%lx, RIP: 0x%lx\n",
+           frame->intr_vector_nr,
+           frame->err_code,
            frame->iret.old_rip);
 }
 

@@ -5,6 +5,7 @@
 #include "mm/mm.h"
 #include "mm/paging.h"
 #include "kernel/multiboot.h"
+#include "kernel/kernel.h"
 #include "util/bug.h"
 #include "util/util.h"
 
@@ -89,7 +90,7 @@ void map_available_ranges(void)
     uint64_t *__counted_by(512) pml4 = bump_alloc_aligned(FOUR_K, FOUR_K);
     memset(pml4, 0, FOUR_K);
 
-    // add one for the kernel itself
+    // add one for up to the kernel end
     uint64_t map_list_count = usable_range_count + 1;
     uint64_t map_list_size = sizeof(*usable_ranges) * map_list_count;
     range_t *map_list = bump_alloc_aligned(map_list_size, sizeof(range_t));

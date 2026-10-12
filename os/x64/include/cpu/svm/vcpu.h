@@ -26,11 +26,10 @@ struct vcpu
 typedef struct vcpu vcpu_t;
 
 static inline
-void guest_regs_load(guest_regs_t *r)
+void guest_regs_store(guest_regs_t *r)
 {
-    __asm__ volatile (".intel_syntax noprefix" ::: "memory");
     __asm__ volatile (
-        "movq %%rbx, %0\n\t"
+        "mov %%rbx, %0\n\t"
         "mov %%rcx, %1\n\t"
         "mov %%rdx, %2\n\t"
         "mov %%rsi, %3\n\t"
@@ -44,21 +43,18 @@ void guest_regs_load(guest_regs_t *r)
         "mov %%r13, %11\n\t"
         "mov %%r14, %12\n\t"
         "mov %%r15, %13\n\t"
+        : "=m"(r->rbx), "=m"(r->rcx), "=m"(r->rdx), "=m"(r->rsi),
+          "=m"(r->rdi), "=m"(r->rbp), "=m"(r->r8), "=m"(r->r9),
+          "=m"(r->r10), "=m"(r->r11), "=m"(r->r12), "=m"(r->r13),
+          "=m"(r->r14), "=m"(r->r15)
         :
-        : "m"(r->rbx), "m"(r->rcx), "m"(r->rdx), "m"(r->rsi),
-          "m"(r->rdi), "m"(r->rbp), "m"(r->r8), "m"(r->r9),
-          "m"(r->r10), "m"(r->r11), "m"(r->r12), "m"(r->r13),
-          "m"(r->r14), "m"(r->r15)
         : "rbx", "rcx", "rdx", "rsi", "rdi", "rbp", "r8", "r9",
-          "r10", "r11", "r12", "r13", "r14", "r15",
-          "memory" );
-    __asm__ volatile (".att_syntax" ::: "memory");
+          "r10", "r11", "r12", "r13", "r14", "r15", "memory" );
 }
 
 static inline
-void guest_regs_store(guest_regs_t *r)
+void guest_regs_load(guest_regs_t *r)
 {
-    __asm__ volatile (".intel_syntax noprefix" ::: "memory");
     __asm__ volatile (
         "mov %0, %%rbx\n\t"
         "mov %1, %%rcx\n\t"
@@ -74,12 +70,13 @@ void guest_regs_store(guest_regs_t *r)
         "mov %11, %%r13\n\t"
         "mov %12, %%r14\n\t"
         "mov %13, %%r15\n\t"
-        : "=m"(r->rbx), "=m"(r->rcx), "=m"(r->rdx), "=m"(r->rsi),
-          "=m"(r->rdi), "=m"(r->rbp), "=m"(r->r8), "=m"(r->r9),
-          "=m"(r->r10), "=m"(r->r11), "=m"(r->r12), "=m"(r->r13),
-          "=m"(r->r14), "=m"(r->r15)
-        : : "memory" );
-    __asm__ volatile (".att_syntax" ::: "memory");
+        :
+        : "m"(r->rbx), "m"(r->rcx), "m"(r->rdx), "m"(r->rsi),
+          "m"(r->rdi), "m"(r->rbp), "m"(r->r8), "m"(r->r9),
+          "m"(r->r10), "m"(r->r11), "m"(r->r12), "m"(r->r13),
+          "m"(r->r14), "m"(r->r15)
+        : "rbx", "rcx", "rdx", "rsi", "rdi", "rbp", "r8", "r9",
+          "r10", "r11", "r12", "r13", "r14", "r15", "memory" );
 }
 
 #endif // __VCPU_H

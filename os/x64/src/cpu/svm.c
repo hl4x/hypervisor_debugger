@@ -134,8 +134,6 @@ void svm_vcpu_init(vcpu_t *vcpu, svm_host_t *host,
     // todo: add save as well
     //vcpu->vmcb->save.cs.selector =
 
-    guest_regs_store(&vcpu->guest_regs);
-
     vcpu->entry_rip = entry_rip;
     vcpu->stack_top = stack_top;
     vcpu->cr3 = cr3;

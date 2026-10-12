@@ -268,6 +268,6 @@ stack32_bottom: resb 16384
 stack32_top:
 
 ; Reserve 16 KiB for the 64-bit stack
+global stack64_top, stack64_bottom
 stack64_bottom: resb 16384
-global stack64_top
 stack64_top:
