@@ -95,7 +95,7 @@ void map_available_ranges(void)
     range_t *map_list = bump_alloc_aligned(map_list_size, sizeof(range_t));
 
     // kernel entry + usable_ranges
-    map_list[0].start = ONE_MB;
+    map_list[0].start = 0;
     map_list[0].end = align_up(kernel_end_addr, FOUR_K);
     memcpy(&map_list[1], usable_ranges, sizeof(*usable_ranges) * usable_range_count);
 

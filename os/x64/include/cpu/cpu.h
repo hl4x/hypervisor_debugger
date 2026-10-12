@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-static inline void cpuid(uint32_t function_number, uint32_t optional_input,
+static inline
+void cpuid(uint32_t function_number, uint32_t optional_input,
            uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d)
 {
     __asm__ volatile ("cpuid"
@@ -11,5 +12,14 @@ static inline void cpuid(uint32_t function_number, uint32_t optional_input,
                       : "0" (function_number), "2" (optional_input)
     );
 }
+
+static inline
+uint64_t read_cr3(void)
+{
+    uint64_t a;
+    __asm__ volatile ("mov %%cr3, %c0" : "=a"(a) : : "memory");
+    return a;
+}
+
 
 #endif // __CPU_H

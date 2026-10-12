@@ -1,6 +1,13 @@
 #ifndef __SVM_H
 #define __SVM_H
 
+#include "cpu/svm/host.h"
+#include "cpu/svm/vcpu.h"
+
+#define MSR_EFER 0xC0000080U
+#define MSR_VM_HSAVE_PA 0xC0010117U
+
+#define EFER_SVME (1ULL << 12)
 // cpuid function numbers
 #define CPUID_MAX_FN 0x00000000U
 
@@ -27,5 +34,11 @@ typedef enum svm_status svm_status_t;
 
 svm_status_t svm_get_status(void);
 const char *svm_status_str(svm_status_t s);
+void svm_host_init(svm_host_t *host);
+void svm_enable(svm_host_t *host);
+void svm_query_features(svm_host_t *host);
+void svm_vcpu_init(vcpu_t *vcpu, svm_host_t *host,
+                   uint64_t entry_rip, uint64_t stack_top,
+                   uint64_t cr3, bool has_nrips);
 
 #endif // __SVM_H
