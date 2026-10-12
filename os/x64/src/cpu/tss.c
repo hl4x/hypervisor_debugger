@@ -3,20 +3,21 @@
 #include <ptrcheck.h>
 
 #include "cpu/tss.h"
+#include "kernel/kernel.h"
 
 static struct tss64 tss = {0};
 
 // refernce GDT from boot.s
-extern uint8_t GDT[];
-extern void stack64_top;
 
 static uint8_t df_stack[DOUBLE_FAULT_STACK_SIZE] __attribute__((aligned(16)));
+uint64_t tss_base;
+uint32_t tss_limit;
 
 void init_tss()
 {
     tss_descriptor_t* tss_desc = __unsafe_forge_single(tss_descriptor_t*, (uint64_t)&GDT + TSS_SEGMENT_SELECTOR);
-    uint64_t tss_base = (uint64_t)&tss;
-    uint32_t tss_limit = sizeof(struct tss64) - 1;
+    tss_base = (uint64_t)&tss;
+    tss_limit = sizeof(struct tss64) - 1;
 
     tss.rsp[0] = (uint64_t)&stack64_top;
     tss.ist[0] = (uint64_t)df_stack + sizeof(df_stack);

@@ -23,7 +23,6 @@ void init64(multiboot_info_t *mb)
     map_available_ranges();
 }
 
-static
 void print_banner(void)
 {
     printf(CLEAR_SCREEN);
@@ -49,7 +48,7 @@ void print_banner(void)
             " ⡀⡆⠀⡉⡁⢿⣉⢀⠀⣰⣷⣿⣟⠠⡽⢂⡀⡄⠀⠰⣖⢱⢖⢂⡆⠈⣿⣿⣿⣿⣿⣶⣄⡙⠻⢿⣿⣿⣷⣦⣀⠀⠠⣤⣀⡀⢈⣓⣶⣶⣿⣿⣿⣿⣿⠟⠉⠀⠀⠀⣉⣭⣽⣿⣿ \n"
             " ⡇⣯⣿⣿⣿⣾⣿⣿⣿⠿⠟⡡⢞⣹⠾⢻⣚⣛⢺⠞⢋⣭⣾⣧⡃⢄⡈⢿⣿⣿⣿⣿⣿⣿⣯⣿⣮⣽⣿⣿⣿⣿⣷⣬⣽⣿⣿⣿⣽⡿⣿⡿⠟⠋⢀⣀⣐⣺⣿⣿⣟⣫⣭⣿⣿ \n"
             " ⢳⣿⣿⣿⣿⣿⣿⣿⣿⣤⣿⣿⣿⣿⣿⣦⠒⠉⢁⡀⠀⣙⣛⢿⣷⣶⣅⠀⠙⠻⣿⣿⣿⣿⣟⡚⠛⠻⠞⠿⠿⡿⡿⠯⠁⠟⣊⠾⠝⢋⣁⣀⣤⣤⣿⣿⣿⡿⠿⠿⠻⠛⠻⠻⠿ \n"
-            " ⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣐⣾⡿⡟⢶⠾⢋⢹⠿⢿⣿⣿⣷⣦⡈⠙⠛⠿⠿⢿⣶⣶⣶⣶⣶⢶⠟⠚⠀⠁⠀⠀⠙⠛⠛⠛⠛⠛⠋⠉⠁⠀⠀⠀⠀⠀⢀⠀⠀ \n");
+            " ⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣐⣾⡿⡟⢶⠾⢋⢹⠿⢿⣿⣿⣷⣦⡈⠙⠛⠿⠿⢿⣶⣶⣶⣶⣶⢶⠟⠚⠀⠁⠀⠀⠙⠛⠛⠛⠛⠛⠋⠉⠁⠀⠀⠀⠀⠀⢀⠀⠀ \n\n\n");
 }
 
 void scratch_test(void)
@@ -72,8 +71,9 @@ void scratch_test(void)
 void kernel_main(multiboot_info_t *mb)
 {
     init64(mb);
-    print_banner();
-    scratch_test();
+    //print_banner();
+    //scratch_test();
+    printf("\nDebugger initialized...!\n\n");
 
     svm_host_t host = {
         .hsave = bump_alloc_aligned(FOUR_K, FOUR_K),
@@ -88,6 +88,12 @@ void kernel_main(multiboot_info_t *mb)
     svm_vcpu_init(&vcpu, &host, (uint64_t)guest_entry,
                   (uint64_t)guest_stack_top, read_cr3(),
                   host.has_nrips);
+
+    // main vmrun loop
+    for (;;) {
+        svm_vmrun(&vcpu);
+        svm_handle_exit(&vcpu);
+    }
 
     for (;;) {
         __asm__ volatile ("hlt");

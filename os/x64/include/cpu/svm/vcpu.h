@@ -24,6 +24,10 @@ struct vcpu
     bool has_nrips;
 };
 typedef struct vcpu vcpu_t;
+_Static_assert(offsetof(vcpu_t, vmcb_pa) == 8,
+    "vmcb_pa misplaced for svm_vmrun");
+_Static_assert(offsetof(vcpu_t, guest_regs) == 16,
+    "guest_regs misplaced for svm_vmrun");
 
 static inline
 void guest_regs_store(guest_regs_t *r)

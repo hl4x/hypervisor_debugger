@@ -65,6 +65,9 @@ struct desc_ptr {
     uint16_t size;
     uint64_t address;
 } __attribute__((packed));
+typedef struct desc_ptr desc_ptr_t;
+
+extern desc_ptr_t idtr;
 
 static inline void pack_gate(gate_desc *gate, unsigned type, uint64_t func, 
                              unsigned dpl, unsigned ist)
@@ -84,7 +87,7 @@ static inline void pack_gate(gate_desc *gate, unsigned type, uint64_t func,
 }
 
 #define load_idt(dtr) native_load_idt(dtr)
-static inline void native_load_idt(const struct desc_ptr *dtr)
+static inline void native_load_idt(const desc_ptr_t *dtr)
 {
     __asm__ volatile ("lidt %0"::"m" (*dtr));
 }
@@ -93,4 +96,4 @@ extern void *isr_stub_table[256];
 
 void init_idt(void);
 
-#endif 
+#endif

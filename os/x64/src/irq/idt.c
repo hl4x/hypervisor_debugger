@@ -6,7 +6,7 @@
 
 // Place the idt in .bss with 16-byte alignment
 gate_desc idt[256] __attribute__((aligned(16)));
-struct desc_ptr idtr;
+desc_ptr_t idtr;
 
 void isr_handler(struct isr_save_state *frame)
 {

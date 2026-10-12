@@ -7,6 +7,10 @@
 
 #define DOUBLE_FAULT_STACK_SIZE 4096
 
+extern uint8_t GDT[];
+extern uint64_t tss_base;
+extern uint32_t tss_limit;
+
 struct tss64 {
     uint32_t reserved0;
     uint64_t rsp[3];

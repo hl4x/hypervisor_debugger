@@ -157,6 +157,17 @@ struct vmcb_seg
 typedef struct vmcb_seg vmcb_seg_t;
 _Static_assert(sizeof(vmcb_seg_t) == 0x10, "vmcb_seg not sized correct");
 
+static inline
+void pack_vmcb_seg(vmcb_seg_t *seg, uint16_t selector,
+                   uint16_t attrib, uint32_t limit,
+                   uint64_t base)
+{
+    seg->selector = selector;
+    seg->attrib = attrib;
+    seg->limit = limit;
+    seg->base = base;
+}
+
 struct vmcb_save_area
 {
     vmcb_seg_t es, cs, ss, ds, fs, gs, gdtr, ldtr, idtr, tr;
