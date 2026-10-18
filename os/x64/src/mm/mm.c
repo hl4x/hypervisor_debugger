@@ -18,12 +18,70 @@ static range_t usable_ranges[USABLE_RANGE_MAX];
 static uint64_t usable_range_count;
 static uint64_t range_idx_parse, range_idx_alloc;
 
+// 64 entries should be enough
+static multiboot_module_t boot_modules[MODULES_MAX];
+static range_t boot_module_ranges[MODULES_MAX];
+static uint32_t boot_modules_count;
+
 static uint64_t kernel_end_addr;
 
-void parse_multiboot_memory(multiboot_info_t *mb)
+static
+void insert_usable_range(range_t *range)
 {
+    BUG_ON(range_idx_parse >= USABLE_RANGE_MAX,
+           "too many memory mappings found in multiboot info, consider increasing USABLE_RANGE_MAX range_idx_parse=%lu, USABLE_RANGE_MAX=%d",
+           range_idx_parse, USABLE_RANGE_MAX);
+
+    uint64_t range_start = range->start;
+    uint64_t range_end = range->end;
+    BUG_ON(range_start >= range_end,
+           "insert_usable_range: range start is >= range end, range_start=0x%lx, range_end=0x%lx",
+           range_start, range_end);
+    usable_ranges[range_idx_parse].start = range_start;
+    usable_ranges[range_idx_parse].end = range_end;
+
+    range_idx_parse++;
+    usable_range_count++;
+}
+
+// should be run before anything else gets called in this file
+void parse_multiboot_info(multiboot_info_t *mb)
+{
+    //
+    // parse grub modules
+    //
+    BUG_ON(!(mb->flags & MULTIBOOT_INFO_MODS),
+            "parse_multiboot_modules: no modules exist, mb->flags=0x%x",
+            mb->flags);
+
+    boot_modules_count = mb->mods_count;
+    BUG_ON(boot_modules_count < 1,
+           "parse_multiboot_modules: no boot modules found, boot_modules_count=%u",
+           boot_modules_count);
+    BUG_ON(boot_modules_count > MODULES_MAX,
+           "parse_multiboot_modules: boot modules greater than MODULES_MAX, boot_modules_count=%u, MODULES_MAX=%d",
+           boot_modules_count, MODULES_MAX);
+
+    multiboot_module_t *mods = phys_map(mb->mods_addr,
+                                        boot_modules_count * sizeof(multiboot_module_t));
+    for (uint32_t i = 0; i < boot_modules_count; i++) {
+        boot_modules[i] = mods[i];
+        uint64_t mod_start = (uint64_t) mods[i].mod_start;
+        uint64_t mod_end = (uint64_t) mods[i].mod_end;
+        BUG_ON(mod_start >= mod_end,
+               "parse_multiboot_info: mod_start overruns mod_end, mod_start=%lu, mod_end=%lu",
+               mod_start, mod_end);
+        boot_module_ranges[i].start = mod_start;
+        boot_module_ranges[i].end = mod_end;
+        //printf ("mod_start = 0x%x, mod_end = 0x%x\n",
+        //        (unsigned) mod_start, (unsigned) mod_end);
+    }
+
+    //
+    // parse memory below
+    //
     BUG_ON(!(mb->flags & MULTIBOOT_INFO_MEM_MAP),
-            "parse_multiboot_memory: memory map not full, mb->flags=0x%x",
+            "parse_multiboot_info: memory map not full, mb->flags=0x%x",
             mb->flags);
 
     range_idx_parse = 0;
@@ -35,7 +93,7 @@ void parse_multiboot_memory(multiboot_info_t *mb)
     uint8_t *mmap = phys_map(mb->mmap_addr, mb->mmap_length);
     while (offset < mem_length) {
         BUG_ON(mem_length - offset < sizeof(multiboot_memory_map_t),
-               "parse_multiboot_memory: trailing partial mmap entry, offset 0x%lx len 0x%x",
+               "parse_multiboot_info: trailing partial mmap entry, offset 0x%lx len 0x%x",
                offset, mem_length);
 
         multiboot_memory_map_t *mmap_entry = (multiboot_memory_map_t *)(mmap + offset);
@@ -44,7 +102,7 @@ void parse_multiboot_memory(multiboot_info_t *mb)
             uint64_t mmap_entry_end = mmap_entry_start + mmap_entry->len;
 
             BUG_ON(mmap_entry_end < mmap_entry_start,
-                   "parse_multiboot_memory: mmap_entry_end overflow, mmap_entry_start 0x%lx mmap_entry_end 0x%lx",
+                   "parse_multiboot_info: mmap_entry_end overflow, mmap_entry_start 0x%lx mmap_entry_end 0x%lx",
                    mmap_entry_start, mmap_entry_end);
 
             uint64_t s = align_up(max(mmap_entry_start, kernel_end_addr), FOUR_K);
@@ -54,24 +112,48 @@ void parse_multiboot_memory(multiboot_info_t *mb)
             if (s >= e)
                 goto inc_offset;
 
-            BUG_ON(range_idx_parse >= USABLE_RANGE_MAX,
-                   "too many memory mappings found in multiboot info, consider increasing USABLE_RANGE_MAX range_idx_parse=%lu, USABLE_RANGE_MAX=%d",
-                   range_idx_parse, USABLE_RANGE_MAX);
+            // carve out boot modules that fall in the current mmap entry range
+            uint64_t cur = s;
+            for (uint32_t i = 0; i < boot_modules_count; i++) {
+                uint64_t ms = align_down(boot_module_ranges[i].start, FOUR_K);
+                uint64_t me = align_up(boot_module_ranges[i].end, FOUR_K);
+                // if the module has already been consumed or the module belongs to
+                // a later mmap entry, continue
+                if (me <= cur || ms >= e)
+                    continue;
 
-            usable_ranges[range_idx_parse].start = s;
-            usable_ranges[range_idx_parse].end = e;
-            range_idx_parse++;
-            usable_range_count++;
+                // if the module start is after cur (gap in between),
+                // insert the range [cur, ms)
+                // ms < e from above
+                if (ms > cur) {
+                    range_t front = { .start = cur, .end = ms };
+                    insert_usable_range(&front);
+                }
+
+                // bring cur to at least the module end
+                cur = max(cur, me);
+
+                // cur reached the entry end. The remaining
+                // modules are in a later entry and therefore,
+                // stop scanning.
+                if (cur >= e)
+                    break;
+            }
+            // after all consumed modules, anything left
+            // in the range [cur, e) is usable, therefore add it.
+            if (cur < e) {
+                range_t last = { .start = cur, .end = e };
+                insert_usable_range(&last);
+            }
         }
-
 inc_offset:
         // https://elixir.bootlin.com/grub/grub-2.14/source/grub-core/loader/i386/multiboot_mbi.c#L274
         uint64_t next_offset = offset + mmap_entry->size + sizeof(mmap_entry->size);
         BUG_ON(next_offset < offset,
-               "parse_multiboot_memory: offset overflow, offset 0x%lx size 0x%x",
+               "parse_multiboot_info: offset overflow, offset 0x%lx size 0x%x",
                offset, mmap_entry->size);
         BUG_ON(next_offset > mem_length,
-               "parse_multiboot_memory: entry overruns map, offset 0x%lx size 0x%x len 0x%x",
+               "parse_multiboot_info: entry overruns map, offset 0x%lx size 0x%x len 0x%x",
                offset, mmap_entry->size, mem_length);
         offset = next_offset;
     }
@@ -84,6 +166,14 @@ inc_offset:
     range_end = usable_ranges[range_idx_alloc].end;
 }
 
+multiboot_module_t *boot_module_get(uint32_t idx)
+{
+    BUG_ON(idx >= boot_modules_count,
+        "boot_module_get: module index is out of bounds, idx=%u",
+        idx);
+    return &boot_modules[idx];
+}
+
 // identity map kernel + available ranges
 void map_available_ranges(void)
 {
@@ -91,14 +181,16 @@ void map_available_ranges(void)
     memset(pml4, 0, FOUR_K);
 
     // add one for up to the kernel end
-    uint64_t map_list_count = usable_range_count + 1;
+    uint64_t map_list_count = usable_range_count + boot_modules_count + 1;
     uint64_t map_list_size = sizeof(*usable_ranges) * map_list_count;
     range_t *map_list = bump_alloc_aligned(map_list_size, sizeof(range_t));
 
-    // kernel entry + usable_ranges
+    // kernel entry + usable_ranges + module ranges
     map_list[0].start = 0;
     map_list[0].end = align_up(kernel_end_addr, FOUR_K);
     memcpy(&map_list[1], usable_ranges, sizeof(*usable_ranges) * usable_range_count);
+    memcpy(&map_list[1 + usable_range_count], boot_module_ranges,
+           sizeof(*boot_module_ranges) * boot_modules_count);
 
     for (uint64_t i = 0; i < map_list_count; i++) {
         uint64_t entry_idx = 0;
@@ -137,7 +229,8 @@ void map_available_ranges(void)
     asm __volatile__ ("mov %0, %%cr3" : : "r"((uint64_t)pml4) : "memory");
 }
 
-static void try_get_next_usable_range(void)
+static
+void try_get_next_usable_range(void)
 {
     range_idx_alloc++;
     BUG_ON(range_idx_alloc >= usable_range_count,

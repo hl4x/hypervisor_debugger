@@ -1,6 +1,7 @@
 MAKEFILE_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OUTPUT := $(abspath $(MAKEFILE_DIR)/.output)
 KERNEL := $(OUTPUT)/kernel
+GUEST := $(OUTPUT)/guest.bin
 ISO_DIR := $(OUTPUT)/isodir
 ISO := $(OUTPUT)/hypervisor_debugger.iso
 
@@ -14,6 +15,7 @@ CFLAGS := -g -ffreestanding -std=gnu99 -O2 -Wall -Wextra -fno-pie -mno-sse -mno-
 LDFLAGS := -nostdlib -T linker.ld -z noexecstack
 LDLIBS :=
 
+GUEST_SRC := x64/guest/guest.s
 C_SRCS := $(shell find x64/src -name '*.c')
 ASM_SRCS := $(shell find x64/src -name '*.s')
 OBJS := $(patsubst x64/src/%.c,$(OUTPUT)/x64/%.o,$(C_SRCS)) \
@@ -32,11 +34,19 @@ $(KERNEL): $(OBJS)
 	$(call msg,LD,$@)
 	$(Q)ld $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-$(ISO): $(KERNEL)
+$(GUEST): $(GUEST_SRC)
+	$(call msg,GUEST,$@)
+	$(Q)mkdir -p $(OUTPUT)
+	$(Q)$(CC) $(CPPFLAGS) -x assembler-with-cpp -E -P $< -o $(OUTPUT)/guest.i
+	$(Q)nasm -fbin -o $@ $(OUTPUT)/guest.i
+	$(Q)rm -f $(OUTPUT)/guest.i
+
+$(ISO): $(KERNEL) $(GUEST)
 	$(call msg,ISO,$@)
 	$(Q)mkdir -p $(ISO_DIR)/boot/grub
 	$(Q)cp $(KERNEL) $(ISO_DIR)/boot/kernel
-	$(Q)echo 'set timeout=0; set default=0; menuentry "hypervisor_debugger" { multiboot /boot/kernel }' > $(ISO_DIR)/boot/grub/grub.cfg
+	$(Q)cp $(GUEST) $(ISO_DIR)/boot/guest.bin
+	$(Q)printf 'set timeout=0; set default=0; menuentry "hypervisor_debugger" { \nmultiboot /boot/kernel\nmodule /boot/guest.bin\n }\n' > $(ISO_DIR)/boot/grub/grub.cfg
 	$(Q)grub-mkrescue -o $(ISO) $(ISO_DIR)
 
 $(OUTPUT)/x64/%.o: x64/src/%.s 

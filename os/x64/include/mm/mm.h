@@ -9,6 +9,7 @@
 #include <util/bug.h>
 
 #define USABLE_RANGE_MAX 64
+#define MODULES_MAX 64
 
 extern uint8_t _kernel_end;
 
@@ -26,7 +27,8 @@ void *__sized_by(size) phys_map(uint64_t pa, uint64_t size)
     return __unsafe_forge_bidi_indexable(void *, pa, size);
 }
 
-void parse_multiboot_memory(multiboot_info_t *mb);
+void parse_multiboot_info(multiboot_info_t *mb);
+multiboot_module_t *boot_module_get(uint32_t idx);
 void map_available_ranges(void);
 void *__sized_by(size) bump_alloc(uint64_t size);
 void *__sized_by(size) bump_alloc_aligned(uint64_t size, uint64_t align);

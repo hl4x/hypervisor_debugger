@@ -5,12 +5,14 @@
 
 #include "util/bug.h"
 
-static inline uint64_t max(uint64_t a, uint64_t b)
+static inline
+uint64_t max(uint64_t a, uint64_t b)
 {
     return a > b ? a : b;
 }
 
-static inline uint64_t align_up(uint64_t v, uint64_t a)
+static inline
+uint64_t align_up(uint64_t v, uint64_t a)
 {
     uint64_t next_boundary = v+a-1;
     BUG_ON(next_boundary < v,
@@ -23,7 +25,8 @@ static inline uint64_t align_up(uint64_t v, uint64_t a)
     return next_boundary & ~(a-1);
 }
 
-static inline uint64_t align_down(uint64_t v, uint64_t a)
+static inline
+uint64_t align_down(uint64_t v, uint64_t a)
 {
     BUG_ON(a-1 > a, "align to size underflow, a=0x%lx",
            a);
@@ -32,7 +35,8 @@ static inline uint64_t align_down(uint64_t v, uint64_t a)
     return v & ~(a-1);
 }
 
-static inline uint64_t align_up_shift(uint64_t v, uint64_t n)
+static inline
+uint64_t align_up_shift(uint64_t v, uint64_t n)
 {
     BUG_ON(n >= 64,
            "can't align to greater than 64 bits, n=%lu",
@@ -45,7 +49,8 @@ static inline uint64_t align_up_shift(uint64_t v, uint64_t n)
     return next_boundary & ~(n_ones);
 }
 
-static inline uint64_t align_down_shift(uint64_t v, uint64_t n)
+static inline
+uint64_t align_down_shift(uint64_t v, uint64_t n)
 {
     BUG_ON(n >= 64,
            "can't align to greater than 64 bits, n=%lu",

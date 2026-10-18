@@ -12,14 +12,11 @@
 #include "mm/mm.h"
 #include "mm/paging.h"
 
-extern void guest_entry(void);
-extern void guest_stack_top(void);
-
 void init64(multiboot_info_t *mb)
 {
     init_idt();
     init_tss();
-    parse_multiboot_memory(mb);
+    parse_multiboot_info(mb);
     map_available_ranges();
 }
 
@@ -85,6 +82,10 @@ void kernel_main(multiboot_info_t *mb)
     svm_enable(&host);
 
     vcpu_t vcpu = { 0 };
+    multiboot_module_t *guest_mod = boot_module_get(0);
+    uint64_t guest_entry = guest_mod->mod_start;
+    uint64_t *guest_stack_bottom = bump_alloc_aligned(FOUR_K, FOUR_K);
+    uint64_t guest_stack_top = (uint64_t) guest_stack_bottom + FOUR_K;
     svm_vcpu_init(&vcpu, &host, (uint64_t)guest_entry,
                   (uint64_t)guest_stack_top, read_cr3(),
                   host.has_nrips);
