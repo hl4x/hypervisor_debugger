@@ -128,7 +128,9 @@ void svm_vcpu_init(vcpu_t *vcpu, svm_host_t *host,
     control->intercepts[INTERCEPT_WORD3] =
         (1u << (INTERCEPT_INTR - 96)) | // bit 0
         (1u << (INTERCEPT_NMI - 96)) | // bit 1
-        (1u << (INTERCEPT_HLT - 96)); // bit 24
+        (1u << (INTERCEPT_HLT - 96)) | // bit 24
+        (1u << (INTERCEPT_SHUTDOWN - 96)); // bit 31
+
     control->intercepts[INTERCEPT_WORD4] =
         (1u << (INTERCEPT_VMRUN - 128)); // bit 0
     control->asid_tlb_ctl = (1ULL << 32) | 1;

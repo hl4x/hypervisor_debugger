@@ -29,7 +29,7 @@ Next (see `NOTES.md`):
 ## Requirements
 
 - `make run` needs an AMD CPU with SVM + KVM enabled (`-cpu host -enable-kvm`)
-- `make debug` runs under TCG with `-cpu qemu64` (SVM emulated), so no AMD/KVM needed
+- `make debug` debug using gdb
 - Linux — tested on:
   - AMD Ryzen 5 2600
   - `Linux phanteks-desktop 7.0.0-28-generic #28~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC x86_64 GNU/Linux`

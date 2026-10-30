@@ -5,20 +5,13 @@
 #include "irq/idt.h"
 #include "cpu/tss.h"
 #include "cpu/cpu.h"
+#include "cpu/pic.h"
 #include "cpu/svm/svm.h"
 #include "cpu/svm/host.h"
 #include "util/printf.h"
 #include "util/bug.h"
 #include "mm/mm.h"
 #include "mm/paging.h"
-
-void init64(multiboot_info_t *mb)
-{
-    init_idt();
-    init_tss();
-    parse_multiboot_info(mb);
-    map_available_ranges();
-}
 
 void print_banner(void)
 {
@@ -63,6 +56,16 @@ void scratch_test(void)
     for (size_t i = 0; i < 16; i++)
         printf("%02x ", mem[i]);
     printf("\n");
+}
+
+void init64(multiboot_info_t *mb)
+{
+    pic_remap();
+    pic_disable();
+    init_idt();
+    init_tss();
+    parse_multiboot_info(mb);
+    map_available_ranges();
 }
 
 void kernel_main(multiboot_info_t *mb)

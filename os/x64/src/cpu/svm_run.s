@@ -65,7 +65,7 @@ svm_vmrun:
     lea rsi, [rdi + 16]         ; rsi = &vcpu->guest_regs
     PUSH_HOST_REGS
     push rsi
-    cli
+    clgi
     GUEST_REGS_LOAD
     ; rsi holds guest_RSI
     vmrun
@@ -76,5 +76,5 @@ svm_vmrun:
     GUEST_REGS_STORE
     add rsp, 8                  ; clear guest rsi on host stack
     POP_HOST_REGS
-    sti
+    stgi
     ret
