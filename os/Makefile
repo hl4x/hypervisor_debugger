@@ -81,12 +81,27 @@ run: $(ISO)
 		-nographic \
 		-monitor telnet:127.0.0.1:1235,server,nowait
 
+.PHONY: emulate
+emulate: $(ISO)
+	$(call msg,QEMU,Starting VM...)
+	$(Q)qemu-system-x86_64 \
+		-accel tcg \
+		-smp 1 \
+		-cpu qemu64,+svm \
+		-m 4G \
+		-cdrom $(ISO) \
+		-nographic \
+		-no-reboot \
+		-trace enable='vmexit*' \
+		-D $(OUTPUT)/qemu_emulated.log \
+		-monitor telnet:127.0.0.1:1235,server,nowait
+
 .PHONY: debug 
 debug: $(ISO)
 	$(call msg,QEMU,Starting VM...)
 	$(Q)qemu-system-x86_64 \
 		-smp 1 \
-		-cpu qemu64 \
+		-cpu host \
 		-m 4G \
 		-cdrom $(ISO) \
 		-nographic \

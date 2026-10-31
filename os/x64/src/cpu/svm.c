@@ -124,7 +124,7 @@ void svm_vcpu_init(vcpu_t *vcpu, svm_host_t *host,
     vmcb_control_area_t *control = &vcpu->vmcb->control;
     vmcb_save_area_t *save = &vcpu->vmcb->save;
 
-    control->intercepts[INTERCEPT_EXCEPTION] = (1u << 3);
+    control->intercepts[INTERCEPT_EXCEPTION] = (1u << 3) | (1u << 6); // #BP + #UD
     control->intercepts[INTERCEPT_WORD3] =
         (1u << (INTERCEPT_INTR - 96)) | // bit 0
         (1u << (INTERCEPT_NMI - 96)) | // bit 1
@@ -240,9 +240,6 @@ void svm_handle_exit(vcpu_t *vcpu)
     uint64_t exit_code = control->exit_code;
 
     if (exit_code >= 0x40  && exit_code <= 0x5f) {
-        // this should be the test int3
-        unsigned long vec = exit_code - 0x40;
-        BUG_ON(vec != 3, "expected #BP(3) got vec 0x%lx", vec);
         svm_dump_exit(vcpu);
         svm_advance_rip(vcpu);
     }
