@@ -214,23 +214,35 @@ void svm_dump_exit(vcpu_t *vcpu)
            (unsigned long)g->rdx, (unsigned long)g->rcx, (unsigned long)g->rbx);
 }
 
+// temporary fallback for now before a real decoder
+static uint64_t svm_fallback_insn_len(uint64_t exit_code)
+{
+    switch (exit_code) {
+        case VMEXIT_HLT: return 1; // F4
+        case VMEXIT_EXCP + 3: return 1; // CC
+        case VMEXIT_EXCP + 6: return 2; // 0F 0B for the current UD2 guest
+        default: return 0;
+    }
+}
+
 void svm_advance_rip(vcpu_t *vcpu)
 {
     BUG_ON(!vcpu || !vcpu->vmcb, "svm_advance_rip: no vcpu/vmcb");
     vmcb_control_area_t *control = &vcpu->vmcb->control;
     vmcb_save_area_t *save = &vcpu->vmcb->save;
 
-    if (vcpu->has_nrips) {
+    if (control->next_rip) {
         save->rip = control->next_rip;
-        // force cpu to reload modified rip
-        control->vmcb_clean = 0;
-    }
-    else {
-        BUG_ON(control->insn_len == 0,
-               "infinite loop detected, 0 len instruction");
+    } else if (control->insn_len) {
         save->rip += control->insn_len;
-        control->vmcb_clean = 0;
+    } else {
+        uint64_t len = svm_fallback_insn_len(control->exit_code);
+        BUG_ON(len == 0,
+               "svm_advance_rip: cannot advance exit 0x%lx",
+               (unsigned long)control->exit_code);
+        save->rip += len;
     }
+    control->vmcb_clean = 0;
 }
 
 void svm_handle_exit(vcpu_t *vcpu)
@@ -239,17 +251,22 @@ void svm_handle_exit(vcpu_t *vcpu)
     vmcb_control_area_t *control = &vcpu->vmcb->control;
     uint64_t exit_code = control->exit_code;
 
-    if (exit_code >= 0x40  && exit_code <= 0x5f) {
+    if (exit_code >= VMEXIT_EXCP &&
+        exit_code <= VMEXIT_EXCP + 0x1f) {
+        uint64_t vec = exit_code - VMEXIT_EXCP;
+
         svm_dump_exit(vcpu);
-        svm_advance_rip(vcpu);
-    }
-    else switch(exit_code) {
-        case VMEXIT_EXCP: {
-            unsigned long vec = (unsigned long)(control->exit_info_1 & 0xffULL);
-            BUG_ON(vec != 3, "expected #BP(3) got vec 0x%lx", vec);
+
+        if (vec == 3 || vec == 6) {
             svm_advance_rip(vcpu);
-            break;
+        } else {
+            BUG_ON(1, "unhandled exception vector 0x%lx (err 0x%lx)",
+                   (unsigned long)vec,
+                   (unsigned long)control->exit_info_1);
         }
+        return;
+    }
+    switch(exit_code) {
         case VMEXIT_HLT:
             svm_advance_rip(vcpu);
             break;
@@ -266,8 +283,4 @@ void svm_handle_exit(vcpu_t *vcpu)
                    (unsigned long)control->exit_code);
             break;
     }
-
-    //if (exit_code != VMEXIT_INTR &&
-    //    exit_code != VMEXIT_NMI)
-    //    svm_dump_exit(vcpu);
 }

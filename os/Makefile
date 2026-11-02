@@ -87,13 +87,12 @@ emulate: $(ISO)
 	$(Q)qemu-system-x86_64 \
 		-accel tcg \
 		-smp 1 \
-		-cpu qemu64,+svm \
+		-cpu qemu64,+svm,+nrip-save \
 		-m 4G \
 		-cdrom $(ISO) \
 		-nographic \
 		-no-reboot \
-		-trace enable='vmexit*' \
-		-D $(OUTPUT)/qemu_emulated.log \
+		-trace enable='vmstate*'\
 		-monitor telnet:127.0.0.1:1235,server,nowait
 
 .PHONY: debug 

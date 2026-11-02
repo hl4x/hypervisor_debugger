@@ -1,18 +1,30 @@
 ; see https://wiki.osdev.org/Bare_Bones_with_NASM
 
 ; Declare constants for the multiboot header.
-MBALIGN  equ  1 << 0            ; align loaded modules on page boundaries
-MEMINFO  equ  1 << 1            ; provide memory map
-MBFLAGS  equ  MBALIGN | MEMINFO ; this is the Multiboot 'flag' field
-MAGIC    equ  0x1BADB002        ; 'magic number' lets bootloader find the header
-CHECKSUM equ -(MAGIC + MBFLAGS) ; checksum of above, to prove we are multiboot
-                                ; CHECKSUM + MAGIC + MBFLAGS should be Zero (0)
+MBALIGN  equ  1 << 0                        ; align loaded modules on page boundaries
+MEMINFO  equ  1 << 1                        ; provide memory map
+VIDMODE  equ  1 << 2                        ; ask GRUB to report video/framebuffer info
+MBFLAGS  equ  MBALIGN | MEMINFO | VIDMODE   ; this is the Multiboot 'flag' field
+MAGIC    equ  0x1BADB002                    ; 'magic number' lets bootloader find the header
+CHECKSUM equ -(MAGIC + MBFLAGS)             ; checksum of above, to prove we are multiboot
+                                            ; CHECKSUM + MAGIC + MBFLAGS should be Zero (0)
 
 section .multiboot
 align 4
+    ; see https://www.gnu.org/software/grub/manual/multiboot/html_node/Header-layout.html
 	dd MAGIC
 	dd MBFLAGS
 	dd CHECKSUM
+    dd 0                        ; header_addr (unused, flag bit 16 not set in MBFLAGS)
+    dd 0                        ; load_addr
+    dd 0                        ; load_end_addr
+    dd 0                        ; bss_end_addr
+    dd 0                        ; entry_addr
+    ; and https://www.gnu.org/software/grub/manual/multiboot/html_node/Header-graphics-fields.html
+    dd 0                        ; mode_type: 0 = linear_graphics
+    dd 1024                     ; width
+    dd 768                      ; height
+    dd 32                       ; depth
 
 extern kernel_main
 

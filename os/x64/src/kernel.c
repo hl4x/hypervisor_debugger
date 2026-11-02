@@ -10,8 +10,10 @@
 #include "cpu/svm/host.h"
 #include "util/printf.h"
 #include "util/bug.h"
+#include "util/util.h"
 #include "mm/mm.h"
 #include "mm/paging.h"
+#include "video/fb.h"
 
 void print_banner(void)
 {
@@ -66,14 +68,24 @@ void init64(multiboot_info_t *mb)
     init_tss();
     parse_multiboot_info(mb);
     map_available_ranges();
+    fb_init(mb);
 }
 
 void kernel_main(multiboot_info_t *mb)
 {
     init64(mb);
+    printf("\nDebugger initialized...!\n\n");
+
+    if (!(mb->flags & MULTIBOOT_INFO_MODS) || mb->mods_count == 0)
+        panic("No guest module loaded.\n"
+              "Add this to the GRUB entry:\n"
+              "    module /boot/hypervisor_debugger_guest.bin\n");
+
+    if(!flash_keyboard_leds())
+        printf("PS/2 keyboard controller unavailable; skipping LED flash\n");
+
     //print_banner();
     //scratch_test();
-    printf("\nDebugger initialized...!\n\n");
 
     svm_host_t host = {
         .hsave = bump_alloc_aligned(FOUR_K, FOUR_K),

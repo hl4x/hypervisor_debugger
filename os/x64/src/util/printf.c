@@ -36,6 +36,7 @@
 #include <ptrcheck.h>
 
 #include "util/printf.h"
+#include "video/fb.h"
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file
@@ -140,10 +141,28 @@ int is_transmit_empty() {
    return inb(PORT + 5) & 0x20;
 }
 
-void _putchar(char a) {
-   while (is_transmit_empty() == 0);
+#define SERIAL_TX_TIMEOUT 100000U
 
-   outb(PORT,a);
+static bool serial_tx_ok = true;
+
+static bool serial_wait_tx(void)
+{
+    uint32_t spins = SERIAL_TX_TIMEOUT;
+    while(spins--)
+        if (inb(PORT + 5) & 0x20)
+            return true;
+    return false;
+}
+
+void _putchar(char a)
+{
+    if (serial_tx_ok) {
+        if (serial_wait_tx())
+            outb(PORT, a);
+        else
+            serial_tx_ok = false; // no usable COM1; don't stall every char
+    }
+   fb_putc(a);
 }
 
 // wrapper (used as buffer) for output function type

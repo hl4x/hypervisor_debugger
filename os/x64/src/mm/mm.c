@@ -25,6 +25,8 @@ static uint32_t boot_modules_count;
 
 static uint64_t kernel_end_addr;
 
+uint64_t pml4_addr;
+
 static
 void insert_usable_range(range_t *range)
 {
@@ -50,31 +52,28 @@ void parse_multiboot_info(multiboot_info_t *mb)
     //
     // parse grub modules
     //
-    BUG_ON(!(mb->flags & MULTIBOOT_INFO_MODS),
-            "parse_multiboot_modules: no modules exist, mb->flags=0x%x",
-            mb->flags);
+    boot_modules_count = 0;
 
-    boot_modules_count = mb->mods_count;
-    BUG_ON(boot_modules_count < 1,
-           "parse_multiboot_modules: no boot modules found, boot_modules_count=%u",
-           boot_modules_count);
-    BUG_ON(boot_modules_count > MODULES_MAX,
-           "parse_multiboot_modules: boot modules greater than MODULES_MAX, boot_modules_count=%u, MODULES_MAX=%d",
-           boot_modules_count, MODULES_MAX);
+    if (mb->flags & MULTIBOOT_INFO_MODS) {
+        BUG_ON(mb->mods_count > MODULES_MAX,
+               "parse_multiboot_modules: boot modules greater than MODULES_MAX, boot_modules_count=%u, MODULES_MAX=%d",
+               mb->mods_count, MODULES_MAX);
 
-    multiboot_module_t *mods = phys_map(mb->mods_addr,
-                                        boot_modules_count * sizeof(multiboot_module_t));
-    for (uint32_t i = 0; i < boot_modules_count; i++) {
-        boot_modules[i] = mods[i];
-        uint64_t mod_start = (uint64_t) mods[i].mod_start;
-        uint64_t mod_end = (uint64_t) mods[i].mod_end;
-        BUG_ON(mod_start >= mod_end,
-               "parse_multiboot_info: mod_start overruns mod_end, mod_start=%lu, mod_end=%lu",
-               mod_start, mod_end);
-        boot_module_ranges[i].start = mod_start;
-        boot_module_ranges[i].end = mod_end;
-        //printf ("mod_start = 0x%x, mod_end = 0x%x\n",
-        //        (unsigned) mod_start, (unsigned) mod_end);
+        boot_modules_count = mb->mods_count;
+
+        if (boot_modules_count) {
+            multiboot_module_t *mods = phys_map(multiboot_module_t, mb->mods_addr, boot_modules_count);
+            for (uint32_t i = 0; i < boot_modules_count; i++) {
+                boot_modules[i] = mods[i];
+                uint64_t mod_start = (uint64_t) mods[i].mod_start;
+                uint64_t mod_end = (uint64_t) mods[i].mod_end;
+                BUG_ON(mod_start >= mod_end,
+                       "parse_multiboot_info: mod_start overruns mod_end, mod_start=%lu, mod_end=%lu",
+                       mod_start, mod_end);
+                boot_module_ranges[i].start = mod_start;
+                boot_module_ranges[i].end = mod_end;
+            }
+        }
     }
 
     //
@@ -90,7 +89,8 @@ void parse_multiboot_info(multiboot_info_t *mb)
 
     uint32_t mem_length = mb->mmap_length;
     uint64_t offset = 0;
-    uint8_t *mmap = phys_map(mb->mmap_addr, mb->mmap_length);
+    // uint8_t has size 1 so __counted_by is still correct here with phys_map
+    uint8_t *mmap = phys_map(uint8_t, mb->mmap_addr, mb->mmap_length);
     while (offset < mem_length) {
         BUG_ON(mem_length - offset < sizeof(multiboot_memory_map_t),
                "parse_multiboot_info: trailing partial mmap entry, offset 0x%lx len 0x%x",
@@ -174,11 +174,48 @@ multiboot_module_t *boot_module_get(uint32_t idx)
     return &boot_modules[idx];
 }
 
+void map_addr(uint64_t addr)
+{
+    uint64_t *__counted_by(512) table = phys_map(uint64_t, pml4_addr, 512);
+    uint64_t entry_idx = 0;
+
+    // 4-level paging with 4Kbyte pages
+    // walk down from pml4->pdp->pd
+    for (uint32_t level = 3; level != 0; level--) {
+        entry_idx = level_index(addr, level);
+        uint64_t *__sized_by(8) entry = &table[entry_idx];
+
+        if (!(*entry & PRESENT)) {
+            uint64_t *__counted_by(512) fresh = bump_alloc_aligned(FOUR_K, FOUR_K);
+            memset(fresh, 0, FOUR_K);
+            table[entry_idx] = (uint64_t) fresh | PRESENT | READ_WRITE;
+            // descend into the lower table
+            table = fresh;
+        }
+        else {
+            table = phys_map(uint64_t, *entry & PTE_ADDR_MASK, 512);
+        }
+    }
+    // pte
+    entry_idx = level_index(addr, 0);
+    table[entry_idx] = (uint64_t) addr | PRESENT | READ_WRITE;
+}
+
+void map_range(uint64_t start, uint64_t end)
+{
+    uint64_t cur_addr = align_down(start, FOUR_K);
+    while (cur_addr < end) {
+        map_addr(cur_addr);
+        cur_addr += FOUR_K;
+    }
+}
+
 // identity map kernel + available ranges
 void map_available_ranges(void)
 {
     uint64_t *__counted_by(512) pml4 = bump_alloc_aligned(FOUR_K, FOUR_K);
     memset(pml4, 0, FOUR_K);
+    pml4_addr = (uint64_t) pml4;
 
     // add one for up to the kernel end
     uint64_t map_list_count = usable_range_count + boot_modules_count + 1;
@@ -193,40 +230,13 @@ void map_available_ranges(void)
            sizeof(*boot_module_ranges) * boot_modules_count);
 
     for (uint64_t i = 0; i < map_list_count; i++) {
-        uint64_t entry_idx = 0;
-        uint64_t cur_addr = map_list[i].start;
+        uint64_t start = map_list[i].start;
         uint64_t end = map_list[i].end;
 
-        while (cur_addr < end) {
-            uint64_t *__counted_by(512) table = pml4;
-
-            // 4-level paging with 4Kbyte pages
-            // walk down from pml4->pdp->pd
-            for (uint32_t level = 3; level != 0; level--) {
-                entry_idx = level_index(cur_addr, level);
-                uint64_t *__sized_by(8) entry = &table[entry_idx];
-
-                if (!(*entry & PRESENT)) {
-                    uint64_t *__counted_by(512) fresh = bump_alloc_aligned(FOUR_K, FOUR_K);
-                    memset(fresh, 0, FOUR_K);
-                    table[entry_idx] = (uint64_t) fresh | PRESENT | READ_WRITE;
-                    // descend into the lower table
-                    table = fresh;
-                }
-                else {
-                    table = phys_map(*entry & PTE_ADDR_MASK, FOUR_K);
-                }
-            }
-            // pte
-            entry_idx = level_index(cur_addr, 0);
-            table[entry_idx] = (uint64_t) cur_addr | PRESENT | READ_WRITE;
-
-            cur_addr += FOUR_K;
-        }
+        map_range(start, end);
     }
 
-    // load cr3 with new pml4 base
-    asm __volatile__ ("mov %0, %%cr3" : : "r"((uint64_t)pml4) : "memory");
+    reload_cr3();
 }
 
 static
@@ -260,7 +270,7 @@ retry:
     uint64_t ptr = bump_ptr;
     bump_ptr += size_aligned;
 
-    return phys_map(ptr, size);
+    return phys_map_bytes(ptr, size);
 }
 
 void *__sized_by(size) bump_alloc(uint64_t size)

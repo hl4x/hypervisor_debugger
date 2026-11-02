@@ -2,8 +2,12 @@
 #define __UTIL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "util/bug.h"
+#include "io/port_io.h"
+
+#define PS2_TIMEOUT 100000U
 
 static inline
 uint64_t max(uint64_t a, uint64_t b)
@@ -56,6 +60,43 @@ uint64_t align_down_shift(uint64_t v, uint64_t n)
            "can't align to greater than 64 bits, n=%lu",
            n);
     return v & ~((1ULL<<n)-1);
+}
+
+static inline
+bool ps2_wait_ibf_clear(void)
+{
+    for (uint32_t i = 0; i < PS2_TIMEOUT; i++)
+        if (!(inb(0x64) & 0x02)) // input buffer full
+            return true;
+    return false;
+}
+
+static inline
+bool ps2_wait_obf_set(void)
+{
+    for (uint32_t i = 0; i < PS2_TIMEOUT; i++)
+        if (inb(0x64) & 0x01) // output buffer full
+            return true;
+    return false;
+}
+
+static inline
+bool flash_keyboard_leds(void)
+{
+    if (!ps2_wait_ibf_clear())
+        return false;
+    outb(0x60, 0xED);
+    if (!ps2_wait_obf_set())
+        return false;
+    if (inb(0x60) != 0xFA) // ACK
+        return false;
+    if (!ps2_wait_ibf_clear())
+        return false;
+    outb(0x60, 0x07); // all LEDs on
+    if (!ps2_wait_obf_set())
+        return false;
+    (void)inb(0x60); // ACK
+    return true;
 }
 
 #endif // __UTIL_H

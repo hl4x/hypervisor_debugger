@@ -8,6 +8,9 @@
 #define MULTIBOOT_INFO_MEM_MAP  0x00000040
 /* are there modules to do something with? */
 #define MULTIBOOT_INFO_MODS                     0x00000008
+/* Is there video information? */
+#define MULTIBOOT_INFO_VBE_INFO                 0x00000800
+#define MULTIBOOT_INFO_FRAMEBUFFER_INFO         0x00001000
 
 struct multiboot_aout_symbol_table
 {
