@@ -22,8 +22,8 @@ align 4
     dd 0                        ; entry_addr
     ; and https://www.gnu.org/software/grub/manual/multiboot/html_node/Header-graphics-fields.html
     dd 0                        ; mode_type: 0 = linear_graphics
-    dd 1024                     ; width
-    dd 768                      ; height
+    dd 1920                     ; width
+    dd 1080                     ; height
     dd 32                       ; depth
 
 extern kernel_main
